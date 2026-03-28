@@ -1,0 +1,25 @@
+[target.thumbv7em-none-eabi]
+# runner = 'probe-rs run --chip AT32F415RCT7 --protocol swd'
+runner = 'probe-rs run --chip AT32F415RCT7 --probe 20b7:9db1:C3-20251207T143255Z:1:0 --protocol swd --always-print-stacktrace'
+rustflags = [
+  # `flip-link` moves stack at the end of flash
+  "-C", "linker=flip-link",
+  "-C", "link-arg=-Tlink.x",
+  "-C", "link-arg=-Tdefmt.x",
+  # This is needed if your flash or ram addresses are not aligned to 0x10000 in memory.x
+  # See https://github.com/rust-embedded/cortex-m-quickstart/pull/95
+  "-C", "link-arg=--nmagic",
+  "-C", "linker-plugin-lto",
+  "-C", "force-frame-pointers=yes",
+  "-C", "force-unwind-tables=yes",
+]
+
+[build]
+target = "thumbv7em-none-eabi"
+
+[unstable]
+build-std = ["core", "alloc", "panic_abort"]
+build-std-features = ["optimize_for_size"]
+
+[env]
+DEFMT_LOG = "debug"
