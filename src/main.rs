@@ -7,7 +7,13 @@ use defmt::info;
 use panic_probe as _;
 
 use at32f4xx_hal::{
-    self as hal, crm::Clocks, gpio::{GpioBusExt as _, OutputPin, PinSpeed as _, Speed}, pac::Peripherals, prelude::*, signature::IDCode, timer::{Channel1, Timer}
+    self as hal,
+    crm::{Clocks, Enable, Reset},
+    gpio::{GpioBusExt as _, OutputPin, PinSpeed as _, Speed},
+    pac::{GPIOA, Peripherals},
+    prelude::*,
+    signature::IDCode,
+    timer::{Channel1, Timer},
 };
 use cortex_m_rt::entry;
 use embedded_graphics::{pixelcolor::Rgb565, prelude::*};
@@ -31,12 +37,11 @@ async fn async_main(dp: Peripherals, cp: cortex_m::Peripherals, clocks: Clocks) 
 }
 
 async fn async_main_(dp: Peripherals, mut cp: cortex_m::Peripherals, clocks: Clocks) {
-    dp.IOMUX
-        .remap()
-        .modify(|_r, w| w.swjtag_mux().swd().tmr2_mux().mux1());
-
     info!("Yep");
 
+    // IOMUX clocks start off and hal doesn't know to enable them
+    at32f4xx_hal::pac::IOMUX::enable(&dp.CRM);
+    at32f4xx_hal::pac::IOMUX::reset(&dp.CRM);
     let gpiob_bus = dp
         .GPIOB
         .bus_u16()
@@ -47,12 +52,22 @@ async fn async_main_(dp: Peripherals, mut cp: cortex_m::Peripherals, clocks: Clo
     let gpiod = dp.GPIOD.split();
     let gpiof = dp.GPIOF.split();
 
+    dp.IOMUX.remap().modify(|_r, w| {
+        w.swjtag_mux().swd();
+        w.tmr2_mux().mux1();
+        // w.tmr2_mux().mux0();
+        w
+    });
+    dp.IOMUX.remap7().modify(|_r, w| {
+        w.swjtag_gmux().swd();
+        w
+    });
+
     info!("Setup gpio");
 
     allocator::init();
 
     info!("Setup alloc");
-
 
     // let wwdt_sts = dp.WWDT.sts().read();
     // let wwdt_ctrl = dp.WWDT.ctrl().read();
@@ -81,21 +96,21 @@ async fn async_main_(dp: Peripherals, mut cp: cortex_m::Peripherals, clocks: Clo
 
     let mut delay = Timer::syst(cp.SYST, &clocks).delay();
 
+    let backlight_pwm_pin = gpioa.pa15.into_alternate().speed(Speed::High);
     let mut backlight_pwm = dp
         .TMR2
-        .pwm_hz((Channel1::new(gpioa.pa15)), 20.kHz(), &clocks)
+        .pwm_hz(Channel1::new(backlight_pwm_pin), 32.kHz(), &clocks)
         .split();
-    backlight_pwm.set_duty(backlight_pwm.get_max_duty() / 4);
+    backlight_pwm.set_duty(backlight_pwm.get_max_duty() / 8);
     backlight_pwm.enable();
 
-    // // let mut backlight_pwm = gpioa.pa15.into_push_pull_output();
-    // // backlight_pwm.set_high();
     // let mut backlight = gpioa.pa8.into_push_pull_output();
     // backlight.set_high();
 
-    let mut pc13 = gpioc.pc13.into_push_pull_output();
+    // !!!! these pins are needed
+    let mut pc13 = gpioc.pc13.into_push_pull_output().speed(Speed::High);
     pc13.set_low();
-    let mut pc0 = gpioc.pc0.into_push_pull_output();
+    let mut pc0 = gpioc.pc0.into_push_pull_output().speed(Speed::High);
     pc0.set_high();
 
     // let mut pf4 = gpiof.pf4.into_push_pull_output();
@@ -109,13 +124,14 @@ async fn async_main_(dp: Peripherals, mut cp: cortex_m::Peripherals, clocks: Clo
     // pa4.set_high();
 
     let mut display = display::init(
-        gpioc.pc14.into_push_pull_output(),
-        gpioc.pc15.into_push_pull_output(),
-        gpioc.pc1.into_push_pull_output(),
+        gpioc.pc14.into_push_pull_output().speed(Speed::High),
+        gpioc.pc15.into_push_pull_output().speed(Speed::High),
+        gpioc.pc1.into_push_pull_output().speed(Speed::High),
         gpiob_bus,
         &mut delay,
     );
 
+    display.wake(&mut delay);
     display.clear(Rgb565::RED);
 
     // 0,0   : top right
@@ -133,12 +149,29 @@ async fn async_main_(dp: Peripherals, mut cp: cortex_m::Peripherals, clocks: Clo
     loop {
         info!("Loop");
         embassy_time::Timer::after_secs(1).await;
+
+        let gpioa = unsafe { GPIOA::steal() };
+        let pa15_mode = gpioa.cfghr().read().iomc15().variant();
+        let pa15_function = gpioa.cfghr().read().iofc15().bits();
+        info!("{} {:b}", defmt::Debug2Format(&pa15_mode), pa15_function);
+
+        let wpen = gpioa.wpr().read().bits();
+        info!("wpen: {:b}", wpen);
+
+        dp.IOMUX.remap().modify(|_r, w| {
+            w.swjtag_mux().swd();
+            w.tmr2_mux().mux1();
+            w
+        });
+        let iomux_out = dp.IOMUX.remap().read().bits();
+        info!("iomux:remap: {:b}", iomux_out);
         // cortex_m::asm::delay(0xfffff);
     }
 }
 
 #[entry]
 fn main() -> ! {
+    cortex_m::asm::delay(100000);
     let dp = unsafe { hal::pac::Peripherals::steal() };
     let cp = cortex_m::peripheral::Peripherals::take().unwrap();
     let crm = dp.CRM.constrain();
@@ -147,7 +180,8 @@ fn main() -> ! {
         .use_hext(8.MHz())
         .sclk(96.MHz())
         .pclk1(24.MHz())
-        .require_pll48clk()
+        .pclk2(24.MHz())
+        .hclk(96.MHz())
         .freeze();
 
     critical_section::with(|cs| {
