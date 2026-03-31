@@ -15,7 +15,6 @@ defmt = "1.0.1"
 cortex-m = { version = "0.7.7", features = ["inline-asm", "linker-plugin-lto", "critical-section-single-core"] }
 mipidsi = "0.10.0"
 embedded-graphics = "0.8.2"
-slint = { version = "1.15.1", default-features = false, features = ["compat-1-2", "libm", "renderer-software", "unsafe-single-threaded"] }
 embedded-alloc = "0.7.0"
 embassy-time-driver = { version = "0.2.2" }
 embassy-sync = "0.8.0"
@@ -47,6 +46,3 @@ lto = 'thin'
 opt-level = 'z'
 overflow-checks = false
 panic = 'abort'
-
-[build-dependencies]
-slint-build = "1.15.1"
