@@ -1,4 +1,4 @@
-use core::convert::Infallible;
+use core::{convert::Infallible, ops::Deref};
 
 use at32f4xx_hal::{
     gpio::OutputPin,
@@ -10,6 +10,7 @@ use at32f4xx_hal::{
     pac::GPIOC,
     timer::SysDelay,
 };
+use embedded_graphics::prelude::DrawTarget;
 use mipidsi::interface::InterfaceKind;
 
 pub struct BusAsU8<const P: char, const SHIFT: u8, const MASK: u16> {
@@ -57,6 +58,11 @@ pub type RdPin = Pin<'C', 0, Output>;
 pub type WrPin = Pin<'C', 15, Output>;
 pub type RstPin = Pin<'C', 1, Output>;
 pub type Backlight = PwmChannel<at32f4xx_hal::pac::TMR2, 0>;
+pub type InnerDisplay = mipidsi::Display<
+    mipidsi::interface::ParallelInterface<BusAsU16<'B', 0, 0xFFFF>, DcPin, WrPin>,
+    mipidsi::models::ST7796,
+    RstPin,
+>;
 
 // 0,0     : top right
 // 320,0   : top left
@@ -66,11 +72,7 @@ pub struct Display {
     cs_pin: CsPin,
     // RD (data read), unused for now, should stay high
     rd_pin: RdPin,
-    pub inner: mipidsi::Display<
-        mipidsi::interface::ParallelInterface<BusAsU16<'B', 0, 0xFFFF>, DcPin, WrPin>,
-        mipidsi::models::ST7796,
-        RstPin,
-    >,
+    pub inner: InnerDisplay,
     backlight: Backlight,
 }
 
@@ -100,8 +102,9 @@ pub fn init(
         .reset_pin(rst)
         .invert_colors(mipidsi::options::ColorInversion::Inverted)
         .orientation(mipidsi::options::Orientation {
-            rotation: mipidsi::options::Rotation::Deg90,
-            mirrored: false,
+            // Deg0 for actual use, 180 on my desk
+            rotation: mipidsi::options::Rotation::Deg180,
+            mirrored: true,
         })
         .color_order(mipidsi::options::ColorOrder::Bgr)
         .init(delay)

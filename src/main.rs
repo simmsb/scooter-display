@@ -4,6 +4,7 @@
 // extern crate alloc;
 
 use defmt::info;
+use embassy_executor::Spawner;
 use panic_probe as _;
 
 use at32f4xx_hal::{
@@ -24,13 +25,19 @@ use static_cell::StaticCell;
 // mod allocator;
 mod display;
 mod time_driver;
+mod ui;
 
 #[embassy_executor::task]
-async fn async_main(dp: Peripherals, cp: cortex_m::Peripherals, clocks: Clocks) {
-    async_main_(dp, cp, clocks).await;
+async fn async_main(spawner: Spawner, dp: Peripherals, cp: cortex_m::Peripherals, clocks: Clocks) {
+    async_main_(spawner, dp, cp, clocks).await;
 }
 
-async fn async_main_(dp: Peripherals, mut cp: cortex_m::Peripherals, clocks: Clocks) {
+async fn async_main_(
+    spawner: Spawner,
+    dp: Peripherals,
+    mut cp: cortex_m::Peripherals,
+    clocks: Clocks,
+) {
     info!("Yep");
 
     // IOMUX clocks start off and hal doesn't know to enable them
@@ -98,7 +105,7 @@ async fn async_main_(dp: Peripherals, mut cp: cortex_m::Peripherals, clocks: Clo
     backlight_pwm.set_duty(backlight_pwm.get_max_duty() / 8);
     backlight_pwm.enable();
 
-    let mut display = display::init(
+    let display = display::init(
         gpioc.pc0.into_push_pull_output().speed(Speed::High),
         gpioc.pc13.into_push_pull_output().speed(Speed::High),
         gpioc.pc14.into_push_pull_output().speed(Speed::High),
@@ -108,6 +115,8 @@ async fn async_main_(dp: Peripherals, mut cp: cortex_m::Peripherals, clocks: Clo
         &mut delay,
         backlight_pwm,
     );
+
+    spawner.spawn(ui::ui(display).unwrap());
 
     loop {
         info!("Loop");
@@ -141,6 +150,6 @@ fn main() -> ! {
 
     let dp = unsafe { hal::pac::Peripherals::steal() };
     executor.run(move |spawner| {
-        spawner.spawn(async_main(dp, cp, clocks).unwrap());
+        spawner.spawn(async_main(spawner, dp, cp, clocks).unwrap());
     });
 }
