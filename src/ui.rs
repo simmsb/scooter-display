@@ -1,10 +1,13 @@
 use buoyant::{
+    app::Harness as _,
+    event::Event,
+    focus::Role,
     render::{AnimatedJoin as _, AnimationDomain, Render},
     render_target::{EmbeddedGraphicsRenderTarget, RenderTarget},
 };
-use embassy_time::{Instant, Timer};
+use embassy_time::{Duration, Instant, Ticker, Timer};
 
-use self::app::App;
+use self::state::{Page, PageAction, State};
 
 #[embassy_executor::task]
 pub async fn ui(mut display: crate::display::Display) {
@@ -16,31 +19,59 @@ async fn ui_(mut display: crate::display::Display) {
         EmbeddedGraphicsRenderTarget::new_hinted(&mut display.inner, color::BACKGROUND);
 
     let app_start = Instant::now();
-    let mut app = App::new();
 
-    let mut source_tree = &mut app.tree(target.size().into(), app_start.elapsed().into());
-    let mut target_tree = &mut app.tree(target.size().into(), app_start.elapsed().into());
+    let mut app = buoyant::app::App::new(
+        State {
+            foo: 0,
+            page: Page::Homescreen,
+            page_action: None,
+        },
+        target.size().into(),
+        view::root_view,
+    )
+    .with_roles(Role::Button | Role::Container);
+
+    app.focus_forward();
+
+    let mut last_changed = Instant::now();
+    let mut last_changed_foo = Instant::now();
+
+    target.clear(color::BACKGROUND);
 
     loop {
-        if app.reset_dirty() {
-            target_tree.join_from(
-                &source_tree,
-                &AnimationDomain::top_level(app_start.elapsed().into()),
-            );
-            core::mem::swap(&mut source_tree, &mut target_tree);
-            *target_tree = app.tree(target.size().into(), app_start.elapsed().into());
+        app.set_time(app_start.elapsed().into());
+
+        // Todo: events
+        if last_changed.elapsed() > Duration::from_secs(5) {
+            last_changed = Instant::now();
+
+            app.send(Event::KeyDown(buoyant::event::Key::UpArrow));
         }
 
-        if target.clear_animation_status() {
-            target.clear(color::BACKGROUND);
+        if last_changed_foo.elapsed() > Duration::from_secs(1) {
+            last_changed_foo = Instant::now();
 
-            Render::render_animated(
-                &mut target,
-                source_tree,
-                target_tree,
-                &color::WHITE,
-                &AnimationDomain::top_level(app_start.elapsed().into()),
-            );
+            app.state_mut().foo += 1;
+        }
+
+        // Handle page changes
+        if let Some(action) = app.state().page_action {
+            let current_page = app.state().page;
+            let new_page = current_page.handle_action(action);
+            let mut state = app.state_mut();
+            state.page = new_page;
+            state.page_action = None;
+
+            defmt::info!("Page: {}", state.page);
+        }
+
+        if app.should_redraw() || target.clear_animation_status() {
+            defmt::info!("Redrawing");
+
+            // target.clear(color::WHITE);
+            app.render_animated(&mut target, &color::BACKGROUND);
+
+            // debug focus?
         } else {
             Timer::after_millis(33).await;
         }
@@ -67,24 +98,50 @@ mod color {
 }
 
 mod view {
-    use buoyant::{match_view, view::prelude::*};
+    use core::time::Duration;
 
-    use super::color::ColorFormat;
+    use buoyant::{
+        event::{Event, Key},
+        focus::{self, FocusAction},
+        match_view,
+        render::Capsule,
+        view::prelude::*,
+    };
 
-    #[derive(PartialEq, Eq, Clone, Copy, Default)]
-    pub enum Screen {
-        #[default]
-        Homescreen,
-        Settings,
-    }
+    use crate::ui::{
+        color,
+        state::{Page, PageAction},
+    };
+
+    use super::{color::ColorFormat, state::State};
 
     #[must_use]
-    pub fn root_view(screen: Screen) -> impl View<ColorFormat, ()> + use<> {
-        match_view!(screen, {
-            Screen::Homescreen => homescreen::view(),
-            Screen::Settings => settings::view(),
+    pub fn root_view(state: &State) -> impl View<ColorFormat, State> + use<> {
+        let paginate = move |s: &mut State, a: buoyant::view::paginate::PageEvent| {
+            s.page_action = Some(match a {
+                buoyant::view::paginate::PageEvent::Next => PageAction::Next,
+                buoyant::view::paginate::PageEvent::Previous => PageAction::Prev,
+            });
+        };
+
+        buoyant::view::Paginate::new(focus::GROUP_1, paginate, {
+            match_view!(state.page, {
+                Page::Homescreen => homescreen::view()
+                    .bound_focus(focus::BoundaryBehavior::Wrap),
+                Page::Settings => settings::view(state)
+                    .bound_focus(focus::BoundaryBehavior::Wrap),
+            })
+        })
+        .map_event::<(), _>(|event: &Event, _state| match event {
+            Event::KeyDown(key) => match key {
+                Key::UpArrow => Some(FocusAction::Previous.into_event(focus::GROUP_1)),
+                Key::DownArrow => Some(FocusAction::Next.into_event(focus::GROUP_1)),
+                _ => None,
+            },
+            _ => Some(event.clone()),
         })
         .padding(Edges::All, 5)
+        .background_color(color::BACKGROUND, Rectangle)
     }
 
     mod homescreen {
@@ -93,44 +150,27 @@ mod view {
         use crate::ui::{
             color::{self, ColorFormat},
             font,
+            state::State,
         };
 
         #[must_use]
-        pub fn view() -> impl View<ColorFormat, ()> + use<> {
-            ViewThatFits::new(FitAxis::Vertical, {
-                VStack::new((
-                    labeled_pair("Temperature", "23 C / 73 F", HorizontalAlignment::Leading),
-                    labeled_pair("Battery Health", "100 %", HorizontalAlignment::Leading),
-                    labeled_pair("Total Input", "12317 wh", HorizontalAlignment::Leading),
-                    labeled_pair("Battery Cycles", "142", HorizontalAlignment::Leading),
-                    labeled_pair("Total Output", "12247 wh", HorizontalAlignment::Leading),
-                    labeled_pair("Screen Uses", "3460", HorizontalAlignment::Leading),
-                ))
-            })
-            .or({
-                VStack::new((
-                    HStack::new((
-                        labeled_pair("Temperature", "23 C / 73 F", HorizontalAlignment::Leading),
-                        labeled_pair("Battery Health", "100 %", HorizontalAlignment::Trailing),
-                    )),
-                    HStack::new((
-                        labeled_pair("Total Input", "12317 wh", HorizontalAlignment::Leading),
-                        labeled_pair("Battery Cycles", "142", HorizontalAlignment::Trailing),
-                    )),
-                    HStack::new((
-                        labeled_pair("Total Output", "12247 wh", HorizontalAlignment::Leading),
-                        labeled_pair("Screen Uses", "3460", HorizontalAlignment::Trailing),
-                    )),
-                ))
-            })
+        pub fn view() -> impl View<ColorFormat, State> + use<> {
+            VStack::new((
+                labeled_pair("Temperature", "23 C / 73 F", HorizontalAlignment::Leading),
+                labeled_pair("Battery Health", "100 %", HorizontalAlignment::Leading),
+                labeled_pair("Total Input", "12317 wh", HorizontalAlignment::Leading),
+                labeled_pair("Battery Cycles", "142", HorizontalAlignment::Leading),
+                labeled_pair("Total Output", "12247 wh", HorizontalAlignment::Leading),
+                labeled_pair("Screen Uses", "3460", HorizontalAlignment::Leading),
+            ))
         }
 
         #[must_use]
-        pub fn labeled_pair<'a>(
+        pub fn labeled_pair<'a, S>(
             label: &'a str,
             value: &'a str,
             alignment: HorizontalAlignment,
-        ) -> impl View<ColorFormat, ()> + use<'a> {
+        ) -> impl View<ColorFormat, S> + use<'a, S> {
             VStack::new((
                 Text::new(value, &font::BODY_BOLD).foreground_color(color::CONTENT),
                 Text::new(label, &font::FOOTNOTE).foreground_color(color::SECONDARY_CONTENT),
@@ -144,103 +184,72 @@ mod view {
     mod settings {
         use buoyant::{match_view, view::prelude::*};
 
-        use crate::ui::{color::ColorFormat, font};
+        use crate::ui::{
+            color::{self, ColorFormat},
+            font,
+            state::State,
+        };
 
         #[must_use]
-        pub fn view() -> impl View<ColorFormat, ()> + use<> {
+        pub fn view(state: &State) -> impl View<ColorFormat, State> + use<> {
             VStack::new((
-                Text::new("Foo", &font::SUBTITLE)
-                    .multiline_text_alignment(HorizontalTextAlignment::Center),
-                Text::new("Bar", &font::BODY)
-                    .multiline_text_alignment(HorizontalTextAlignment::Center),
+                Text::new("Foo", &font::TITLE)
+                    .multiline_text_alignment(HorizontalTextAlignment::Center)
+                    .foreground_color(color::CONTENT),
+                Text::new(heapless::format!(8; "{}", state.foo).unwrap(), &font::BODY)
+                    .multiline_text_alignment(HorizontalTextAlignment::Center)
+                    .foreground_color(color::SECONDARY_CONTENT),
             ))
-            .with_spacing(5)
+            .with_alignment(HorizontalAlignment::Center)
+            .flex_infinite_width(HorizontalAlignment::Center)
+            .with_infinite_max_height()
         }
     }
 }
 
-mod app {
-    use core::time::Duration;
+mod state {
+    #[derive(PartialEq, Eq, Clone, Copy, Default, defmt::Format)]
+    pub enum Page {
+        #[default]
+        Homescreen,
+        Settings,
+    }
 
-    use buoyant::view::prelude::*;
+    impl Page {
+        pub fn handle_action(&self, action: PageAction) -> Self {
+            match (self, action) {
+                (Page::Homescreen, PageAction::Next) => Page::Settings,
+                (Page::Homescreen, PageAction::Prev) => Page::Settings,
 
-    use buoyant::{
-        environment::DefaultEnvironment, primitives::ProposedDimensions, render::Render,
-    };
+                (Page::Settings, PageAction::Next) => Page::Homescreen,
+                (Page::Settings, PageAction::Prev) => Page::Homescreen,
+            }
+        }
+    }
 
-    use super::{
-        color,
-        view::{self, Screen},
-    };
-
-    pub struct App {
-        state: State,
-        is_dirty: bool,
+    #[derive(PartialEq, Eq, Clone, Copy)]
+    pub enum PageAction {
+        Next,
+        Prev,
     }
 
     pub struct State {
-        screen: Screen,
-    }
-
-    impl App {
-        pub fn new() -> Self {
-            Self {
-                state: State {
-                    screen: Screen::Homescreen,
-                },
-                is_dirty: false,
-            }
-        }
-
-        pub fn state_mut(&mut self) -> &mut State {
-            self.is_dirty = true;
-            &mut self.state
-        }
-
-        #[must_use]
-        pub fn state(&self) -> &State {
-            &self.state
-        }
-
-        pub fn reset_dirty(&mut self) -> bool {
-            let was_dirty = self.is_dirty;
-            self.is_dirty = false;
-            was_dirty
-        }
-
-        pub fn tree(
-            &self,
-            dimensions: ProposedDimensions,
-            app_time: Duration,
-        ) -> impl Render<color::ColorFormat> + use<> {
-            let env = DefaultEnvironment::new(app_time);
-            let view = view::root_view(self.state.screen);
-            let mut state = view.build_state(&mut ());
-            let layout = view.layout(&dimensions, &env, &mut (), &mut state);
-            view.render_tree(
-                &layout.sublayouts,
-                buoyant::primitives::Point::zero(),
-                &env,
-                &mut (),
-                &mut state,
-            )
-        }
+        pub foo: u32,
+        pub page: Page,
+        pub page_action: Option<PageAction>,
     }
 }
 
 mod font {
     use u8g2_fonts::{
         FontRenderer,
-        fonts::{
-            u8g2_font_helvB12_tr, u8g2_font_helvB14_tr, u8g2_font_helvB18_tr, u8g2_font_helvR08_tr,
-            u8g2_font_helvR12_tr, u8g2_font_helvR18_tr,
-        },
+        fonts,
     };
 
-    pub static TITLE: FontRenderer = FontRenderer::new::<u8g2_font_helvR18_tr>();
-    pub static TITLE_BOLD: FontRenderer = FontRenderer::new::<u8g2_font_helvB18_tr>();
-    pub static SUBTITLE: FontRenderer = FontRenderer::new::<u8g2_font_helvB14_tr>();
-    pub static BODY: FontRenderer = FontRenderer::new::<u8g2_font_helvR12_tr>();
-    pub static BODY_BOLD: FontRenderer = FontRenderer::new::<u8g2_font_helvB12_tr>();
-    pub static FOOTNOTE: FontRenderer = FontRenderer::new::<u8g2_font_helvR08_tr>();
+    pub static TITLE: FontRenderer = FontRenderer::new::<fonts::u8g2_font_eckpixel_tr>();
+    pub static TITLE_BOLD: FontRenderer = FontRenderer::new::<fonts::u8g2_font_helvB18_tr>();
+    pub static SUBTITLE: FontRenderer = FontRenderer::new::<fonts::u8g2_font_helvB14_tr>();
+    pub static BODY: FontRenderer = FontRenderer::new::<fonts::u8g2_font_helvR12_tr>();
+    pub static BODY_BOLD: FontRenderer = FontRenderer::new::<fonts::u8g2_font_helvB12_tr>();
+    pub static FOOTNOTE: FontRenderer = FontRenderer::new::<fonts::u8g2_font_helvR08_tr>();
 }

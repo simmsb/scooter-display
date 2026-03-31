@@ -133,10 +133,10 @@ fn main() -> ! {
     let clocks = crm
         .cfgr
         .use_hext(8.MHz())
-        .sclk(96.MHz())
-        .pclk1(24.MHz())
-        .pclk2(24.MHz())
-        .hclk(96.MHz())
+        .sclk(150.MHz())
+        .pclk1(75.MHz())
+        .pclk2(75.MHz())
+        .hclk(150.MHz())
         .freeze();
 
     critical_section::with(|cs| {

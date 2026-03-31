@@ -45,6 +45,7 @@ impl<const P: char, const SHIFT: u8, const MASK: u16> mipidsi::interface::Output
 
     type Error = Infallible;
 
+    #[inline(always)]
     fn set_value(&mut self, value: Self::Word) -> Result<(), Self::Error> {
         self.inner.set_state(value);
         Ok(())
@@ -98,7 +99,7 @@ pub fn init(
 
     let bus1 = BusAsU16 { inner: bus };
     let interface = mipidsi::interface::ParallelInterface::new(bus1, dc, wr);
-    let display = mipidsi::Builder::new(mipidsi::models::ST7796, interface)
+    let mut display = mipidsi::Builder::new(mipidsi::models::ST7796, interface)
         .reset_pin(rst)
         .invert_colors(mipidsi::options::ColorInversion::Inverted)
         .orientation(mipidsi::options::Orientation {
@@ -109,6 +110,8 @@ pub fn init(
         .color_order(mipidsi::options::ColorOrder::Bgr)
         .init(delay)
         .unwrap();
+
+    display.set_tearing_effect(mipidsi::options::TearingEffect::Vertical);
 
     Display {
         cs_pin: cs,
