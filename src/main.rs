@@ -3,18 +3,14 @@
 
 // extern crate alloc;
 
+use core::num::{NonZeroU8, NonZeroU16};
+
 use defmt::info;
 use embassy_executor::Spawner;
 use panic_probe as _;
 
 use at32f4xx_hal::{
-    self as hal,
-    crm::{Clocks, Enable, Reset},
-    gpio::{GpioBusExt as _, OutputPin, PinSpeed as _, Speed},
-    pac::{GPIOA, Peripherals},
-    prelude::*,
-    signature::IDCode,
-    timer::{Channel1, Timer},
+    self as hal, can::util::NominalBitTiming, crm::{Clocks, Enable, Reset}, gpio::{GpioBusExt as _, OutputPin, PinSpeed as _, Speed}, pac::{GPIOA, Peripherals}, prelude::*, signature::IDCode, timer::{Channel1, Timer}
 };
 use cortex_m_rt::entry;
 use embedded_graphics::{pixelcolor::Rgb565, prelude::*};
@@ -23,6 +19,7 @@ use defmt_rtt as _;
 use static_cell::StaticCell;
 
 // mod allocator;
+mod can;
 mod display;
 mod time_driver;
 mod ui;
@@ -116,10 +113,26 @@ async fn async_main_(
         backlight_pwm,
     );
 
+    let can = at32f4xx_hal::can::Can::new(dp.CAN1, gpioa.pa11, gpioa.pa12, &clocks);
+
+    static CAN_CELL: StaticCell<at32f4xx_hal::can::Can> = StaticCell::new();
+    let can = CAN_CELL.init(can);
+    can.modify_config()
+        .set_loopback(false)
+        .set_silent(false)
+        .set_bitrate(250_000)
+        ;
+    can.enable().await;
+    can.wakeup();
+    can.set_automatic_wakeup(true);
+
+    let (can_tx, can_rx) = can.split();
+
+    spawner.spawn(can::can_rx(can_rx).unwrap());
+    spawner.spawn(can::can_tx(can_tx).unwrap());
     spawner.spawn(ui::ui(display).unwrap());
 
     loop {
-        info!("Loop");
         embassy_time::Timer::after_secs(1).await;
     }
 }
@@ -133,11 +146,12 @@ fn main() -> ! {
     let clocks = crm
         .cfgr
         .use_hext(8.MHz())
-        .sclk(150.MHz())
-        .pclk1(75.MHz())
-        .pclk2(75.MHz())
-        .hclk(150.MHz())
+        .sclk(96.MHz())
+        .pclk1(48.MHz())
+        .pclk2(48.MHz())
         .freeze();
+
+    defmt::debug!("Starting up with clocks: {:#}", clocks);
 
     critical_section::with(|cs| {
         time_driver::init(cs, &clocks);

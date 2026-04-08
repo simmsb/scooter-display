@@ -3,7 +3,7 @@ use buoyant::{
     event::Event,
     focus::Role,
     render::{AnimatedJoin as _, AnimationDomain, Render},
-    render_target::{EmbeddedGraphicsRenderTarget, RenderTarget},
+    render_target::{EmbeddedGraphicsRenderTarget, RenderTarget}, view::ViewLayout,
 };
 use embassy_time::{Duration, Instant, Ticker, Timer};
 
@@ -12,6 +12,17 @@ use self::state::{Page, PageAction, State};
 #[embassy_executor::task]
 pub async fn ui(mut display: crate::display::Display) {
     ui_(display).await;
+}
+
+
+const fn root_view_differ_size<V, T, S>(f: fn(T) -> V) -> usize
+where
+    V: ViewLayout<S>,
+    V::Renderables: buoyant::render::Diffable,
+{
+    use buoyant::render::Diffable;
+
+    V::Renderables::SIZE.div_ceil(8) + 1
 }
 
 async fn ui_(mut display: crate::display::Display) {
@@ -38,6 +49,8 @@ async fn ui_(mut display: crate::display::Display) {
 
     target.clear(color::BACKGROUND);
 
+    let mut diffing_mem = [0u8; root_view_differ_size(view::root_view)];
+
     loop {
         app.set_time(app_start.elapsed().into());
 
@@ -62,14 +75,13 @@ async fn ui_(mut display: crate::display::Display) {
             state.page = new_page;
             state.page_action = None;
 
-            defmt::info!("Page: {}", state.page);
+            defmt::trace!("Page: {}", state.page);
         }
 
         if app.should_redraw() || target.clear_animation_status() {
-            defmt::info!("Redrawing");
+            defmt::trace!("Redrawing");
 
-            // target.clear(color::WHITE);
-            app.render_animated(&mut target, &color::BACKGROUND);
+            app.render_animated_diffed(&mut target, &color::BACKGROUND, &mut diffing_mem);
 
             // debug focus?
         } else {
