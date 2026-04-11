@@ -24,11 +24,16 @@ fugit = "0.3.9"
 embassy-executor = { version = "0.10.0", features = ["defmt", "platform-cortex-m", "executor-thread", "embassy-time-driver"] }
 static_cell = "2.1.1"
 embassy-time = { version = "0.5.1", features = ["defmt", "defmt-timestamp-uptime", "tick-hz-32_000"] }
-# buoyant = { path = "../buoyant" }
-buoyant = { git = "https://github.com/simmsb/buoyant", version = "0.7.0-alpha.3", branch = "simmsb/buoyant-with-diffing" }
+buoyant = { path = "../buoyant", features = ["glyphr"] }
+# buoyant = { git = "https://github.com/simmsb/buoyant", version = "0.7.0-alpha.3", branch = "simmsb/buoyant-with-diffing" }
 # buoyant = { git = "https://github.com/riley-williams/buoyant", version = "0.7.0-alpha.3", branch = "charts" }
 u8g2-fonts = { version = "0.7.2", features = ["embedded_graphics_textstyle"] }
 heapless = "0.9.2"
+glyphr = { version = "0.5.1", default-features = false, git = "https://github.com/simmsb/glyphr" }
+
+[patch."https://github.com/simmsb/glyphr"]
+glyphr-macros = { path = "../glyphr/glyphr-macros" }
+glyphr = { path = "../glyphr/glyphr" }
 
 [profile.dev]
 codegen-units = 1

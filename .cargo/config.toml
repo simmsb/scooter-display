@@ -16,6 +16,7 @@ rustflags = [
 
 [build]
 target = "thumbv7em-none-eabi"
+rustflags = ["-C", "llvm-args=-enable-dfa-jump-thread"]
 
 [unstable]
 build-std = ["core", "alloc", "panic_abort"]

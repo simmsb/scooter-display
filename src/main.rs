@@ -10,7 +10,14 @@ use embassy_executor::Spawner;
 use panic_probe as _;
 
 use at32f4xx_hal::{
-    self as hal, can::util::NominalBitTiming, crm::{Clocks, Enable, Reset}, gpio::{GpioBusExt as _, OutputPin, PinSpeed as _, Speed}, pac::{GPIOA, Peripherals}, prelude::*, signature::IDCode, timer::{Channel1, Timer}
+    self as hal,
+    can::util::NominalBitTiming,
+    crm::{Clocks, Enable, Reset},
+    gpio::{GpioBusExt as _, OutputPin, PinSpeed as _, Speed},
+    pac::{GPIOA, Peripherals},
+    prelude::*,
+    signature::IDCode,
+    timer::{Channel1, Timer},
 };
 use cortex_m_rt::entry;
 use embedded_graphics::{pixelcolor::Rgb565, prelude::*};
@@ -120,8 +127,7 @@ async fn async_main_(
     can.modify_config()
         .set_loopback(false)
         .set_silent(false)
-        .set_bitrate(250_000)
-        ;
+        .set_bitrate(250_000);
     can.enable().await;
     can.wakeup();
     can.set_automatic_wakeup(true);
@@ -133,7 +139,8 @@ async fn async_main_(
     spawner.spawn(ui::ui(display).unwrap());
 
     loop {
-        embassy_time::Timer::after_secs(1).await;
+        defmt::debug!("Tick");
+        embassy_time::Timer::after_secs(5).await;
     }
 }
 
@@ -146,7 +153,7 @@ fn main() -> ! {
     let clocks = crm
         .cfgr
         .use_hext(8.MHz())
-        .sclk(96.MHz())
+        .sclk(96.MHz()) // can seems to fall over if this is clocked any higher
         .pclk1(48.MHz())
         .pclk2(48.MHz())
         .freeze();

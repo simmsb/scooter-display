@@ -6,6 +6,7 @@ use buoyant::{
     render_target::{EmbeddedGraphicsRenderTarget, RenderTarget}, view::ViewLayout,
 };
 use embassy_time::{Duration, Instant, Ticker, Timer};
+use embedded_graphics::{pixelcolor::Rgb565, prelude::RgbColor};
 
 use self::state::{Page, PageAction, State};
 
@@ -34,7 +35,7 @@ async fn ui_(mut display: crate::display::Display) {
     let mut app = buoyant::app::App::new(
         State {
             foo: 0,
-            page: Page::Homescreen,
+            page: Page::Settings,
             page_action: None,
         },
         target.size().into(),
@@ -58,7 +59,7 @@ async fn ui_(mut display: crate::display::Display) {
         if last_changed.elapsed() > Duration::from_secs(5) {
             last_changed = Instant::now();
 
-            app.send(Event::KeyDown(buoyant::event::Key::UpArrow));
+            // app.send(Event::KeyDown(buoyant::event::Key::UpArrow));
         }
 
         if last_changed_foo.elapsed() > Duration::from_secs(1) {
@@ -81,7 +82,10 @@ async fn ui_(mut display: crate::display::Display) {
         if app.should_redraw() || target.clear_animation_status() {
             defmt::trace!("Redrawing");
 
+            // target.clear(Rgb565::RED);
+            let start = Instant::now();
             app.render_animated_diffed(&mut target, &color::BACKGROUND, &mut diffing_mem);
+            // defmt::debug!("Drawing took {}ms", start.elapsed().as_millis());
 
             // debug focus?
         } else {
@@ -184,8 +188,8 @@ mod view {
             alignment: HorizontalAlignment,
         ) -> impl View<ColorFormat, S> + use<'a, S> {
             VStack::new((
-                Text::new(value, &font::BODY_BOLD).foreground_color(color::CONTENT),
-                Text::new(label, &font::FOOTNOTE).foreground_color(color::SECONDARY_CONTENT),
+                Text::new(value, &font::B612_REGULAR).foreground_color(color::CONTENT),
+                Text::new(label, &font::B612_REGULAR).foreground_color(color::SECONDARY_CONTENT),
             ))
             .with_alignment(alignment)
             .flex_infinite_width(alignment)
@@ -205,10 +209,10 @@ mod view {
         #[must_use]
         pub fn view(state: &State) -> impl View<ColorFormat, State> + use<> {
             VStack::new((
-                Text::new("Foo", &font::TITLE)
+                Text::new("Foo", &font::B612_REGULAR)
                     .multiline_text_alignment(HorizontalTextAlignment::Center)
                     .foreground_color(color::CONTENT),
-                Text::new(heapless::format!(8; "{}", state.foo).unwrap(), &font::BODY)
+                Text::new(heapless::format!(8; "{}", state.foo).unwrap(), &font::B612_REGULAR_LARGE_NUMBERS)
                     .multiline_text_alignment(HorizontalTextAlignment::Center)
                     .foreground_color(color::SECONDARY_CONTENT),
             ))
@@ -253,15 +257,38 @@ mod state {
 }
 
 mod font {
-    use u8g2_fonts::{
-        FontRenderer,
-        fonts,
-    };
+    // use u8g2_fonts::{
+    //     FontRenderer,
+    //     fonts,
+    // };
 
-    pub static TITLE: FontRenderer = FontRenderer::new::<fonts::u8g2_font_eckpixel_tr>();
-    pub static TITLE_BOLD: FontRenderer = FontRenderer::new::<fonts::u8g2_font_helvB18_tr>();
-    pub static SUBTITLE: FontRenderer = FontRenderer::new::<fonts::u8g2_font_helvB14_tr>();
-    pub static BODY: FontRenderer = FontRenderer::new::<fonts::u8g2_font_helvR12_tr>();
-    pub static BODY_BOLD: FontRenderer = FontRenderer::new::<fonts::u8g2_font_helvB12_tr>();
-    pub static FOOTNOTE: FontRenderer = FontRenderer::new::<fonts::u8g2_font_helvR08_tr>();
+    // pub static TITLE: FontRenderer = FontRenderer::new::<fonts::u8g2_font_eckpixel_tr>();
+    // pub static TITLE_BOLD: FontRenderer = FontRenderer::new::<fonts::u8g2_font_helvB18_tr>();
+    // pub static SUBTITLE: FontRenderer = FontRenderer::new::<fonts::u8g2_font_helvB14_tr>();
+    // pub static BODY: FontRenderer = FontRenderer::new::<fonts::u8g2_font_helvR12_tr>();
+    // pub static BODY_BOLD: FontRenderer = FontRenderer::new::<fonts::u8g2_font_helvB12_tr>();
+    // pub static FOOTNOTE: FontRenderer = FontRenderer::new::<fonts::u8g2_font_helvR08_tr>();
+
+
+    glyphr::generate_font! {
+        name: B612_REGULAR,
+        path: "src/B612-Regular.ttf",
+        size: 24,
+        characters: "0-9A-Za-z! /:,%",
+        format: Bitmap {
+            spread: 10.0,
+            padding: 0
+        }
+    }
+
+    glyphr::generate_font! {
+        name: B612_REGULAR_LARGE_NUMBERS,
+        path: "src/B612-Regular.ttf",
+        size: 36,
+        characters: "0-9",
+        format: Bitmap {
+            spread: 20.0,
+            padding: 0
+        }
+    }
 }
