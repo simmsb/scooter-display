@@ -14,6 +14,7 @@ dependencies = [
 [[package]]
 name = "at32f4xx-hal"
 version = "0.0.1"
+source = "git+https://github.com/simmsb/at32f4xx-hal#72dd62e8cced8b8d384f2511258572fa68a4d772"
 dependencies = [
  "at32f4xx-pac",
  "bit_field",
@@ -40,6 +41,7 @@ dependencies = [
 [[package]]
 name = "at32f4xx-pac"
 version = "0.4.0"
+source = "git+https://github.com/simmsb/at32f4xx-pac#001cccec482668f5bd93c6c2a70ed72157abe99d"
 dependencies = [
  "cortex-m",
  "cortex-m-rt",
@@ -113,6 +115,7 @@ dependencies = [
 [[package]]
 name = "buoyant"
 version = "0.7.0-alpha.3"
+source = "git+https://github.com/simmsb/buoyant?branch=simmsb%2Fbuoyant-with-diffing#a9f2e993cfb76007e71456a81c7323d32e869872"
 dependencies = [
  "bitvec",
  "defmt 1.0.1",
@@ -691,6 +694,7 @@ dependencies = [
 [[package]]
 name = "glyphr"
 version = "0.5.1"
+source = "git+https://github.com/simmsb/glyphr#ae225368c843210d8e2088d190a6631d27a79d4e"
 dependencies = [
  "glyphr-macros",
  "itertools",
@@ -700,6 +704,7 @@ dependencies = [
 [[package]]
 name = "glyphr-macros"
 version = "0.1.2"
+source = "git+https://github.com/simmsb/glyphr#ae225368c843210d8e2088d190a6631d27a79d4e"
 dependencies = [
  "minijinja",
  "proc-macro2",
