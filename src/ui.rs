@@ -3,7 +3,8 @@ use buoyant::{
     event::Event,
     focus::Role,
     render::{AnimatedJoin as _, AnimationDomain, Render},
-    render_target::{EmbeddedGraphicsRenderTarget, RenderTarget}, view::ViewLayout,
+    render_target::{EmbeddedGraphicsRenderTarget, RenderTarget},
+    view::ViewLayout,
 };
 use embassy_time::{Duration, Instant, Ticker, Timer};
 use embedded_graphics::{pixelcolor::Rgb565, prelude::RgbColor};
@@ -14,7 +15,6 @@ use self::state::{Page, PageAction, State};
 pub async fn ui(mut display: crate::display::Display) {
     ui_(display).await;
 }
-
 
 const fn root_view_differ_size<V, T, S>(f: fn(T) -> V) -> usize
 where
@@ -59,7 +59,7 @@ async fn ui_(mut display: crate::display::Display) {
         if last_changed.elapsed() > Duration::from_secs(5) {
             last_changed = Instant::now();
 
-            // app.send(Event::KeyDown(buoyant::event::Key::UpArrow));
+            app.send(Event::KeyDown(buoyant::event::Key::UpArrow));
         }
 
         if last_changed_foo.elapsed() > Duration::from_secs(1) {
@@ -212,9 +212,12 @@ mod view {
                 Text::new("Foo", &font::B612_REGULAR)
                     .multiline_text_alignment(HorizontalTextAlignment::Center)
                     .foreground_color(color::CONTENT),
-                Text::new(heapless::format!(8; "{}", state.foo).unwrap(), &font::B612_REGULAR_LARGE_NUMBERS)
-                    .multiline_text_alignment(HorizontalTextAlignment::Center)
-                    .foreground_color(color::SECONDARY_CONTENT),
+                Text::new(
+                    heapless::format!(8; "{}", state.foo).unwrap(),
+                    &font::B612_REGULAR_LARGE_NUMBERS,
+                )
+                .multiline_text_alignment(HorizontalTextAlignment::Center)
+                .foreground_color(color::SECONDARY_CONTENT),
             ))
             .with_alignment(HorizontalAlignment::Center)
             .flex_infinite_width(HorizontalAlignment::Center)
@@ -269,10 +272,9 @@ mod font {
     // pub static BODY_BOLD: FontRenderer = FontRenderer::new::<fonts::u8g2_font_helvB12_tr>();
     // pub static FOOTNOTE: FontRenderer = FontRenderer::new::<fonts::u8g2_font_helvR08_tr>();
 
-
     glyphr::generate_font! {
         name: B612_REGULAR,
-        path: "src/B612-Regular.ttf",
+        path: "B612-Regular.ttf",
         size: 24,
         characters: "0-9A-Za-z! /:,%",
         format: Bitmap {
@@ -283,7 +285,7 @@ mod font {
 
     glyphr::generate_font! {
         name: B612_REGULAR_LARGE_NUMBERS,
-        path: "src/B612-Regular.ttf",
+        path: "B612-Regular.ttf",
         size: 36,
         characters: "0-9",
         format: Bitmap {

@@ -16,8 +16,13 @@ use at32f4xx_hal::{
     gpio::{GpioBusExt as _, OutputPin, PinSpeed as _, Speed},
     pac::{GPIOA, Peripherals},
     prelude::*,
+    serial::Serial2,
     signature::IDCode,
     timer::{Channel1, Timer},
+    uart::{
+        self,
+        config::{DmaConfig, Parity, StopBits, WordLength},
+    },
 };
 use cortex_m_rt::entry;
 use embedded_graphics::{pixelcolor::Rgb565, prelude::*};
@@ -26,6 +31,7 @@ use defmt_rtt as _;
 use static_cell::StaticCell;
 
 // mod allocator;
+pub mod bluetooth;
 mod can;
 mod display;
 mod time_driver;
@@ -134,6 +140,23 @@ async fn async_main_(
 
     let (can_tx, can_rx) = can.split();
 
+    let usart2 = Serial2::<u8>::new(
+        dp.USART2,
+        (gpioa.pa2, gpioa.pa3),
+        uart::Config {
+            baudrate: 57600.bps(),
+            wordlength: WordLength::DataBits8,
+            parity: Parity::ParityNone,
+            stopbits: StopBits::STOP1,
+            dma: DmaConfig::None,
+        },
+        &clocks,
+    )
+    .unwrap();
+    let (usart2_tx, usart2_rx) = usart2.split();
+
+    spawner.spawn(bluetooth::bluetooth_rx(usart2_rx).unwrap());
+    spawner.spawn(bluetooth::bluetooth_tx(usart2_tx).unwrap());
     spawner.spawn(can::can_rx(can_rx).unwrap());
     spawner.spawn(can::can_tx(can_tx).unwrap());
     spawner.spawn(ui::ui(display).unwrap());

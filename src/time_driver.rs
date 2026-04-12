@@ -231,15 +231,21 @@ impl TmrDriver {
             return false;
         }
 
-        defmt::trace!("NVIC enabled: ovf:{}, cc:{}",
-                     NVIC::is_enabled(OVF_INTR),
-                     NVIC::is_enabled(CC_INTR));
-        defmt::trace!("NVIC pending: ovf:{}, cc:{}",
-                     NVIC::is_pending(OVF_INTR),
-                     NVIC::is_pending(CC_INTR));
-        defmt::trace!("NVIC prio: ovf:{}, cc:{}",
-                     NVIC::get_priority(OVF_INTR),
-                     NVIC::get_priority(CC_INTR));
+        defmt::trace!(
+            "NVIC enabled: ovf:{}, cc:{}",
+            NVIC::is_enabled(OVF_INTR),
+            NVIC::is_enabled(CC_INTR)
+        );
+        defmt::trace!(
+            "NVIC pending: ovf:{}, cc:{}",
+            NVIC::is_pending(OVF_INTR),
+            NVIC::is_pending(CC_INTR)
+        );
+        defmt::trace!(
+            "NVIC prio: ovf:{}, cc:{}",
+            NVIC::get_priority(OVF_INTR),
+            NVIC::get_priority(CC_INTR)
+        );
 
         defmt::trace!("ISTS: {}", r.ists().read().bits());
 

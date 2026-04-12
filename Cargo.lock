@@ -14,7 +14,7 @@ dependencies = [
 [[package]]
 name = "at32f4xx-hal"
 version = "0.0.1"
-source = "git+https://github.com/simmsb/at32f4xx-hal#72dd62e8cced8b8d384f2511258572fa68a4d772"
+source = "git+https://github.com/simmsb/at32f4xx-hal#dc4dc2f0bc09c173bed50c3cef11125b3c95641a"
 dependencies = [
  "at32f4xx-pac",
  "bit_field",
@@ -30,6 +30,7 @@ dependencies = [
  "embedded-hal 1.0.0",
  "embedded-hal-nb",
  "embedded-io",
+ "embedded-io-async",
  "embedded-storage",
  "fugit",
  "fugit-timer",
@@ -1087,6 +1088,7 @@ dependencies = [
  "embassy-time-queue-utils",
  "embedded-alloc",
  "embedded-graphics",
+ "embedded-io-async",
  "fugit",
  "glyphr",
  "heapless 0.9.2",
