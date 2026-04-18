@@ -16,7 +16,6 @@ defmt = "1.0.1"
 cortex-m = { version = "0.7.7", features = ["inline-asm", "linker-plugin-lto", "critical-section-single-core"] }
 mipidsi = "0.10.0"
 embedded-graphics = "0.8.2"
-embedded-alloc = "0.7.0"
 embassy-time-driver = { version = "0.2.2" }
 embassy-sync = "0.8.0"
 embassy-time-queue-utils = "0.3.0"
@@ -40,8 +39,8 @@ deku = { version = "0.20.3", default-features = false }
 #glyphr-macros = { path = "../glyphr/glyphr-macros" }
 #glyphr = { path = "../glyphr/glyphr" }
 
-[patch."https://github.com/simmsb/at32f4xx-hal"]
-at32f4xx-hal = { path = "../at32f4xx-hal" }
+# [patch."https://github.com/simmsb/at32f4xx-hal"]
+# at32f4xx-hal = { path = "../at32f4xx-hal" }
 
 [profile.dev]
 codegen-units = 1

@@ -1,3 +1,4 @@
+use deku::{no_std_io, writer::Writer};
 use embedded_io_async::{Error, Read};
 
 #[derive(defmt::Format)]
@@ -71,7 +72,11 @@ pub async fn read_framed<'buf, R: Read>(
     Ok(&buf[0..len])
 }
 
-pub fn assemble_framed(buf: &mut [u8], start_byte: u8, body: &[u8]) -> Result<(), WriteFramedError> {
+pub fn assemble_framed(
+    buf: &mut [u8],
+    start_byte: u8,
+    body: &[u8],
+) -> Result<(), WriteFramedError> {
     let total_len: u8 = body
         .len()
         .checked_add(4)
@@ -94,4 +99,37 @@ pub fn assemble_framed(buf: &mut [u8], start_byte: u8, body: &[u8]) -> Result<()
     buf[(total_len as usize - 2)..(total_len as usize)].copy_from_slice(&calculated_crc);
 
     Ok(())
+}
+
+pub fn assemble_framed_deku<'a, T: deku::DekuWriter + deku::DekuSize>(
+    buf: &'a mut [u8],
+    start_byte: u8,
+    body: &T,
+) -> Result<&'a [u8], WriteFramedError> {
+    let total_len: u8 = T::SIZE_BYTES
+        .unwrap()
+        .checked_add(4)
+        .and_then(|n| n.try_into().ok())
+        .ok_or(WriteFramedError::NumericOverflow)?;
+
+    if buf.len() < total_len as usize {
+        return Err(WriteFramedError::BufferTooSmall);
+    }
+
+    buf[0] = start_byte;
+    buf[1] = total_len;
+
+    let mut cursor = no_std_io::Cursor::new(&mut buf[2..]);
+    let mut writer = Writer::new(&mut cursor);
+    body.to_writer(&mut writer, ()).unwrap();
+    let _ = writer.finalize();
+
+    let crc = crc::Crc::<u16>::new(&crc::CRC_16_XMODEM);
+    let mut digest = crc.digest();
+    digest.update(&buf[0..(total_len as usize - 2)]);
+    let calculated_crc = digest.finalize().to_le_bytes();
+
+    buf[(total_len as usize - 2)..(total_len as usize)].copy_from_slice(&calculated_crc);
+
+    Ok(&buf[..(total_len as usize)])
 }

@@ -37,6 +37,7 @@ mod display;
 mod time_driver;
 mod ui;
 pub mod framed_reader;
+pub mod bluetooth_proto;
 
 #[embassy_executor::task]
 async fn async_main(spawner: Spawner, dp: Peripherals, cp: cortex_m::Peripherals, clocks: Clocks) {
@@ -154,10 +155,9 @@ async fn async_main_(
         &clocks,
     )
     .unwrap();
-    let (usart2_tx, usart2_rx) = usart2.split();
 
-    spawner.spawn(bluetooth::bluetooth_rx(usart2_rx).unwrap());
-    spawner.spawn(bluetooth::bluetooth_tx(usart2_tx).unwrap());
+    bluetooth::start_bluetooth(spawner, usart2);
+
     spawner.spawn(can::can_rx(can_rx).unwrap());
     spawner.spawn(can::can_tx(can_tx).unwrap());
     spawner.spawn(ui::ui(display).unwrap());
