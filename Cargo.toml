@@ -32,10 +32,16 @@ u8g2-fonts = { version = "0.7.2", features = ["embedded_graphics_textstyle"] }
 heapless = "0.9.2"
 glyphr = { version = "0.5.1", default-features = false, git = "https://github.com/simmsb/glyphr" }
 embedded-io-async = "0.7.0"
+embedded-hal-nb = "1.0.0"
+crc = "3.4.0"
+deku = { version = "0.20.3", default-features = false }
 
 #[patch."https://github.com/simmsb/glyphr"]
 #glyphr-macros = { path = "../glyphr/glyphr-macros" }
 #glyphr = { path = "../glyphr/glyphr" }
+
+[patch."https://github.com/simmsb/at32f4xx-hal"]
+at32f4xx-hal = { path = "../at32f4xx-hal" }
 
 [profile.dev]
 codegen-units = 1

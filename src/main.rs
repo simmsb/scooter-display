@@ -36,6 +36,7 @@ mod can;
 mod display;
 mod time_driver;
 mod ui;
+pub mod framed_reader;
 
 #[embassy_executor::task]
 async fn async_main(spawner: Spawner, dp: Peripherals, cp: cortex_m::Peripherals, clocks: Clocks) {
