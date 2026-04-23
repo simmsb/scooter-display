@@ -30,14 +30,7 @@ use embedded_graphics::{pixelcolor::Rgb565, prelude::*};
 use defmt_rtt as _;
 use static_cell::StaticCell;
 
-// mod allocator;
-pub mod bluetooth;
-mod can;
-mod display;
-mod time_driver;
-mod ui;
-pub mod framed_reader;
-pub mod bluetooth_proto;
+use scooter_display::{bluetooth, can, display, time_driver, ui};
 
 #[embassy_executor::task]
 async fn async_main(spawner: Spawner, dp: Peripherals, cp: cortex_m::Peripherals, clocks: Clocks) {

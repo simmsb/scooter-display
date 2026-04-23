@@ -357,6 +357,7 @@ version = "0.20.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ebf55291257a2a5c90cf50ae17b6bbaabc3fd13642cf3895a71c412513c19630"
 dependencies = [
+ "bitvec",
  "deku_derive",
  "no_std_io2",
  "rustversion",
@@ -1143,7 +1144,6 @@ dependencies = [
  "mipidsi",
  "panic-probe",
  "static_cell",
- "u8g2-fonts",
 ]
 
 [[package]]

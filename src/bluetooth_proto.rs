@@ -1,3 +1,5 @@
+use core::str::FromStr as _;
+
 use heapless::LenType;
 
 #[derive(deku::DekuRead, deku::DekuWrite, deku::DekuSize, defmt::Format)]
@@ -550,8 +552,103 @@ impl EndpointValue for SettingsHandlerResponse {
     }
 }
 
+// Intrinsics.checkNotNullParameter(bytes, "bytes");
+// boolean zFlag = PayloadUtilsKt.flag(bytes[0], 0); // activated
+// boolean zFlag2 = PayloadUtilsKt.flag(bytes[0], 1); // display lock
+// boolean zFlag3 = PayloadUtilsKt.flag(bytes[0], 2); // speed limit
+// boolean zFlag4 = PayloadUtilsKt.flag(bytes[0], 3);  // bluetooth always on
+// Language languageFromByte = Language.INSTANCE.fromByte(bytes[1]);
+// byte b = bytes[2];
+// String strDecodeToString = StringsKt.decodeToString(ArraysKt.copyOfRange(bytes, 3, 7));
+// String strDecodeToString2 = StringsKt.decodeToString(ArraysKt.copyOfRange(bytes, 7, 11));
+// SpeedLimit speedLimitFromByte = SpeedLimit.INSTANCE.fromByte(bytes[11]);
+// SpeedUnit speedUnitFromByte = SpeedUnit.INSTANCE.fromByte(bytes[13]);
+// AutomaticHeadlights.Companion companion = AutomaticHeadlights.INSTANCE;
+// Byte orNull = ArraysKt.getOrNull(bytes, 14);
+// return new Settings(zFlag, zFlag2, zFlag3, zFlag4, languageFromByte, b, strDecodeToString, strDecodeToString2, speedLimitFromByte, speedUnitFromByte, companion.fromByte(orNull != null ? orNull.byteValue() : (byte) -1));
+
+//    public Settings(boolean z, boolean z2, boolean z3, boolean z4, Language language, int i, String unlockCodeDisplay, String activationCode, SpeedLimit speedLimit, SpeedUnit speedUnit, AutomaticHeadlights automaticHeadlights) {
+//         Intrinsics.checkNotNullParameter(language, "language");
+//         Intrinsics.checkNotNullParameter(unlockCodeDisplay, "unlockCodeDisplay");
+//         Intrinsics.checkNotNullParameter(activationCode, "activationCode");
+//         Intrinsics.checkNotNullParameter(speedLimit, "speedLimit");
+//         Intrinsics.checkNotNullParameter(speedUnit, "speedUnit");
+//         Intrinsics.checkNotNullParameter(automaticHeadlights, "automaticHeadlights");
+//         this.isActivated = z;
+//         this.displayLockEnabled = z2;
+//         this.speedLimitEnabled = z3;
+//         this.bluetoothAlwaysOn = z4;
+//         this.language = language;
+//         this.brightness = i;
+//         this.unlockCodeDisplay = unlockCodeDisplay;
+//         this.activationCode = activationCode;
+//         this.speedLimit = speedLimit;
+//         this.speedUnit = speedUnit;
+//         this.automaticHeadlights = automaticHeadlights;
+//     }
+
+#[cfg_attr(test, derive(deku::DekuRead, PartialEq, Debug))]
 #[derive(defmt::Format, deku::DekuWrite, deku::DekuSize)]
-pub struct SettingsReportResponse;
+pub struct SettingsReportResponse {
+    #[deku(bits = 1, pad_bits_before = "4")]
+    pub bluetooth_always_on: bool,
+    #[deku(bits = 1)]
+    pub speed_limit_enabled: bool,
+    #[deku(bits = 1)]
+    pub display_lock: bool,
+    #[deku(bits = 1)]
+    pub activated: bool,
+
+    pub language: u8,
+    pub brightness: u8,
+
+    pub unlock_code: BluetoothString<4, u8>,
+    pub activation_code: BluetoothString<4, u8>,
+
+    pub speed_limit: u8,
+    pub unknown: u8,
+    pub speed_unit: u8,
+    pub headlights_config: u8,
+    pub nfc_key_presence: u8,
+    pub active_nfc_key: u32,
+}
+
+impl SettingsReportResponse {
+    pub fn new(
+        activated: bool,
+        display_lock: bool,
+        speed_limit_enabled: bool,
+        bluetooth_always_on: bool,
+        language: u8,
+        brightness: u8,
+        unlock_code: BluetoothString<4, u8>,
+        activation_code: BluetoothString<4, u8>,
+        speed_limit: u8,
+        unknown: u8,
+        speed_unit: u8,
+        headlights_config: u8,
+        nfc_key_presence: u8,
+        active_nfc_key: u32,
+    ) -> Self {
+        Self {
+            activated,
+            display_lock,
+            speed_limit_enabled,
+            bluetooth_always_on,
+            language,
+            brightness,
+            unlock_code,
+            activation_code,
+            speed_limit,
+            unknown,
+            speed_unit,
+            headlights_config,
+            nfc_key_presence,
+            active_nfc_key,
+        }
+    }
+}
+
 impl EndpointValue for SettingsReportResponse {
     fn endpoint_value() -> Endpoint {
         Endpoint::SettingsReport
@@ -665,7 +762,14 @@ impl EndpointValue for InitiateBluetoothUpdateResponse {
     }
 }
 
+#[derive(Eq, PartialEq, Debug)]
 pub struct BluetoothString<const N: usize, LenT: LenType>(pub heapless::String<N, LenT>);
+
+impl<const N: usize, LenT: LenType> BluetoothString<N, LenT> {
+    pub fn new(s: &str) -> Self {
+        Self(heapless::String::from_str(s).unwrap())
+    }
+}
 
 impl<const N: usize, LenT: LenType> defmt::Format for BluetoothString<N, LenT> {
     fn format(&self, fmt: defmt::Formatter) {
@@ -703,11 +807,46 @@ impl<'a, const N: usize, LenT: LenType> deku::DekuReader<'a> for BluetoothString
             s.truncate(null_idx);
         }
         let s = heapless::String::from_utf8(s)
-            .map_err(|_| deku::DekuError::Parse("no nul in string"))?;
+            .map_err(|_| deku::deku_error!(deku::DekuError::Parse, "no nul in string"))?;
         Ok(Self(s))
     }
 }
 
 impl<const N: usize, LenT: LenType> deku::DekuSize for BluetoothString<N, LenT> {
     const SIZE_BITS: usize = u8::SIZE_BITS * N;
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn settings_report() {
+        let serialized = &[
+            0x0B, 0x01, 0x04, 0x31, 0x32, 0x33, 0x34, 0x30, 0x30, 0x30, 0x30, 0x00, 0x00, 0x00,
+            0x02, 0x01, 0xA5, 0x06, 0x97, 0xC5,
+        ];
+
+        let parsed = SettingsReportResponse::try_from(serialized.as_slice()).unwrap();
+
+        assert_eq!(
+            parsed,
+            SettingsReportResponse {
+                activated: true,
+                display_lock: true,
+                speed_limit_enabled: false,
+                bluetooth_always_on: true,
+                language: 1,
+                brightness: 4,
+                unlock_code: BluetoothString::new("1234"),
+                activation_code: BluetoothString::new("0000"),
+                speed_limit: 0,
+                unknown: 0,
+                speed_unit: 0,
+                headlights_config: 2,
+                nfc_key_presence: 1,
+                active_nfc_key: 0xC59706A5,
+            }
+        )
+    }
 }

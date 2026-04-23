@@ -63,7 +63,11 @@ async fn bluetooth_rx_(
         let command = match Command::from_bytes((buf, 0)) {
             Ok(((rem, _), cmd)) => cmd,
             Err(e) => {
-                defmt::warn!("Command parse error: {} (in: {})", defmt::Debug2Format(&e), buf);
+                defmt::warn!(
+                    "Command parse error: {} (in: {})",
+                    defmt::Debug2Format(&e),
+                    buf
+                );
                 continue;
             }
         };
@@ -111,42 +115,55 @@ async fn bluetooth_tx_(
         let cmd = cmd_receiver.receive().await;
 
         let resp = match cmd {
-            Command::Unknown0(_) => { None }
-            Command::Unknown1(_) => { None }
-            Command::BluetoothEnabledBit(_) => { None }
-            Command::SetConnectionState(_) => { None }
-            Command::Unknown4(_) => { None }
+            Command::Unknown0(_) => None,
+            Command::Unknown1(_) => None,
+            Command::BluetoothEnabledBit(_) => None,
+            Command::SetConnectionState(_) => None,
+            Command::Unknown4(_) => None,
             Command::DeviceInformation(_) => {
                 Some(Response::DeviceInformation(DeviceInformationResponse))
             }
-            Command::SystemStatus(_) => { None }
+            Command::SystemStatus(_) => None,
             Command::SystemStatusUnknown(_) => {
                 Some(Response::SystemStatusUnknown(SystemStatusUnknownResponse))
             }
-            Command::OperationHandle(_) => { None }
-            Command::DeviceState(_) => { None }
-            Command::Odometer(_) => { None }
-            Command::SettingsHandler(_) => { None }
-            Command::SettingsReport(_) => {
-                Some(Response::SettingsReport(SettingsReportResponse))
-            }
-            Command::SetCustomerName(_) => { None }
+            Command::OperationHandle(_) => None,
+            Command::DeviceState(_) => None,
+            Command::Odometer(_) => None,
+            Command::SettingsHandler(_) => None,
+            Command::SettingsReport(_) => Some(Response::SettingsReport(SettingsReportResponse {
+                activated: true,
+                display_lock: true,
+                speed_limit_enabled: false,
+                bluetooth_always_on: true,
+                language: 1,
+                brightness: 4,
+                unlock_code: BluetoothString::new("1234"),
+                activation_code: BluetoothString::new("0000"),
+                speed_limit: 0,
+                unknown: 0,
+                speed_unit: 0,
+                headlights_config: 2,
+                nfc_key_presence: 1,
+                active_nfc_key: 0xC59706A5,
+            })),
+            Command::SetCustomerName(_) => None,
             Command::ReportCustomerName(_) => {
                 Some(Response::ReportCustomerName(ReportCustomerNameResponse {
-                    name: BluetoothString("Hello".parse().unwrap())
+                    name: BluetoothString("Hello".parse().unwrap()),
                 }))
             }
-            Command::Unknown15(_) => { None }
-            Command::CurrentSpeed(_) => { None }
-            Command::ChargeHistory(_) => { None }
-            Command::FailureCode(_) => { None }
-            Command::BatteryAndActiveTime(_) => { None }
-            Command::DriveModeHistory(_) => { None }
-            Command::Unknown21(_) => { None }
-            Command::Unknown22(_) => { None }
-            Command::UpdateProgress(_) => { None }
-            Command::ConnectedStatus(_) => { None }
-            Command::InitiateBluetoothUpdate(_) => { None }
+            Command::Unknown15(_) => None,
+            Command::CurrentSpeed(_) => None,
+            Command::ChargeHistory(_) => None,
+            Command::FailureCode(_) => None,
+            Command::BatteryAndActiveTime(_) => None,
+            Command::DriveModeHistory(_) => None,
+            Command::Unknown21(_) => None,
+            Command::Unknown22(_) => None,
+            Command::UpdateProgress(_) => None,
+            Command::ConnectedStatus(_) => None,
+            Command::InitiateBluetoothUpdate(_) => None,
         };
 
         cmd_receiver.receive_done();

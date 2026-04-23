@@ -5,15 +5,20 @@ name = "scooter-display"
 version = "0.1.0"
 edition = "2024"
 
+[[bin]]
+name = "scooter_display"
+path = "src/main.rs"
+test = false
+
 [dependencies]
 # at32f4xx-hal = { path = "../at32f4xx-hal", features = ["at32f415", "defmt"] }
 at32f4xx-hal = { git = "https://github.com/simmsb/at32f4xx-hal", features = ["at32f415", "defmt"] }
-cortex-m-rt = { version = "0.7.5", features = ["set-sp", "set-vtor"] }
+cortex-m-rt = { version = "0.7.5", features = ["set-sp", "set-vtor"], optional = true }
 # defmt-rtt = { version = "1.1.0", features = ["disable-blocking-mode"] }
 defmt-rtt = { version = "1.1.0", features = [] }
-panic-probe = { version = "1.0.0", features = ["defmt", "print-defmt"] }
+panic-probe = { version = "1.0.0", features = ["defmt", "print-defmt"], optional = true }
 defmt = "1.0.1"
-cortex-m = { version = "0.7.7", features = ["inline-asm", "linker-plugin-lto", "critical-section-single-core"] }
+cortex-m = { version = "0.7.7", features = ["inline-asm", "linker-plugin-lto", "critical-section-single-core"], optional = true }
 mipidsi = "0.10.0"
 embedded-graphics = "0.8.2"
 embassy-time-driver = { version = "0.2.2" }
@@ -27,13 +32,17 @@ embassy-time = { version = "0.5.1", features = ["defmt", "defmt-timestamp-uptime
 # buoyant = { path = "../buoyant", features = ["glyphr"] }
 buoyant = { git = "https://github.com/simmsb/buoyant", version = "0.7.0-alpha.3", branch = "simmsb/buoyant-with-diffing" }
 # buoyant = { git = "https://github.com/riley-williams/buoyant", version = "0.7.0-alpha.3", branch = "charts" }
-u8g2-fonts = { version = "0.7.2", features = ["embedded_graphics_textstyle"] }
 heapless = { version = "0.9.2", features = ["defmt"] }
 glyphr = { version = "0.5.1", default-features = false, git = "https://github.com/simmsb/glyphr" }
 embedded-io-async = "0.7.0"
 embedded-hal-nb = "1.0.0"
 crc = "3.4.0"
-deku = { version = "0.20.3", default-features = false }
+deku = { version = "0.20.3", default-features = false, features = ["bits"] }
+
+[features]
+test = ["deku/descriptive-errors"]
+app = ["dep:cortex-m-rt", "dep:panic-probe", "dep:cortex-m"]
+default = ["app"]
 
 #[patch."https://github.com/simmsb/glyphr"]
 #glyphr-macros = { path = "../glyphr/glyphr-macros" }
@@ -60,6 +69,6 @@ debug = 2
 debug-assertions = false
 incremental = false
 lto = 'fat'
-opt-level = 's'
+opt-level = 3
 overflow-checks = false
 panic = 'abort'
