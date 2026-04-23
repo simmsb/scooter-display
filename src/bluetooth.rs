@@ -63,7 +63,7 @@ async fn bluetooth_rx_(
         let command = match Command::from_bytes((buf, 0)) {
             Ok(((rem, _), cmd)) => cmd,
             Err(e) => {
-                defmt::warn!("Command parse error: {}", defmt::Debug2Format(&e));
+                defmt::warn!("Command parse error: {} (in: {})", defmt::Debug2Format(&e), buf);
                 continue;
             }
         };
@@ -131,7 +131,11 @@ async fn bluetooth_tx_(
                 Some(Response::SettingsReport(SettingsReportResponse))
             }
             Command::SetCustomerName(_) => { None }
-            Command::ReportCustomerName(_) => { None }
+            Command::ReportCustomerName(_) => {
+                Some(Response::ReportCustomerName(ReportCustomerNameResponse {
+                    name: BluetoothString("Hello".parse().unwrap())
+                }))
+            }
             Command::Unknown15(_) => { None }
             Command::CurrentSpeed(_) => { None }
             Command::ChargeHistory(_) => { None }

@@ -1,5 +1,7 @@
+use heapless::LenType;
+
 #[derive(deku::DekuRead, deku::DekuWrite, deku::DekuSize, defmt::Format)]
-#[deku(id_type = "u16", endian = "big")]
+#[deku(id_type = "u16", endian = "little")]
 #[repr(u16)]
 pub enum Endpoint {
     // 0. Unknown, has no callbacks in firmware
@@ -63,7 +65,7 @@ pub trait EndpointValue {
 }
 
 #[derive(deku::DekuRead, defmt::Format)]
-#[deku(id_type = "u16", id_endian = "big")]
+#[deku(id_type = "u16", id_endian = "little", magic = b"\0")]
 #[repr(u16)]
 pub enum Command {
     #[deku(id = 0x00)]
@@ -361,9 +363,8 @@ impl EndpointValue for InitiateBluetoothUpdateCommand {
     }
 }
 
-
 #[derive(deku::DekuWrite, deku::DekuSize, defmt::Format)]
-#[deku(id_type = "u16", id_endian = "big")]
+#[deku(id_type = "u16", id_endian = "little", magic = b"\0")]
 #[repr(u16)]
 pub enum Response {
     #[deku(id = 0x00)]
@@ -566,7 +567,10 @@ impl EndpointValue for SetCustomerNameResponse {
 }
 
 #[derive(defmt::Format, deku::DekuWrite, deku::DekuSize)]
-pub struct ReportCustomerNameResponse;
+pub struct ReportCustomerNameResponse {
+    pub name: BluetoothString<20, u8>,
+}
+
 impl EndpointValue for ReportCustomerNameResponse {
     fn endpoint_value() -> Endpoint {
         Endpoint::ReportCustomerName
@@ -659,4 +663,51 @@ impl EndpointValue for InitiateBluetoothUpdateResponse {
     fn endpoint_value() -> Endpoint {
         Endpoint::InitiateBluetoothUpdate
     }
+}
+
+pub struct BluetoothString<const N: usize, LenT: LenType>(pub heapless::String<N, LenT>);
+
+impl<const N: usize, LenT: LenType> defmt::Format for BluetoothString<N, LenT> {
+    fn format(&self, fmt: defmt::Formatter) {
+        self.0.format(fmt);
+    }
+}
+
+impl<const N: usize, LenT: LenType> deku::DekuWriter for BluetoothString<N, LenT> {
+    #[doc = " Write type to bytes"]
+    fn to_writer<W: deku::no_std_io::Write + deku::no_std_io::Seek>(
+        &self,
+        writer: &mut deku::writer::Writer<W>,
+        ctx: (),
+    ) -> Result<(), deku::DekuError> {
+        let remainder = N - self.0.as_bytes().len();
+        self.0.as_bytes().to_writer(writer, ctx)?;
+        for _ in 0..remainder {
+            writer.write_bytes(&[0u8])?;
+        }
+        Ok(())
+    }
+}
+
+impl<'a, const N: usize, LenT: LenType> deku::DekuReader<'a> for BluetoothString<N, LenT> {
+    fn from_reader_with_ctx<R: deku::no_std_io::Read + deku::no_std_io::Seek>(
+        reader: &mut deku::reader::Reader<R>,
+        ctx: (),
+    ) -> Result<Self, deku::DekuError>
+    where
+        Self: Sized,
+    {
+        let s = <[u8; N]>::from_reader_with_ctx(reader, ctx)?;
+        let mut s = heapless::Vec::from_array(s);
+        if let Some(null_idx) = s.iter().position(|&b| b == 0) {
+            s.truncate(null_idx);
+        }
+        let s = heapless::String::from_utf8(s)
+            .map_err(|_| deku::DekuError::Parse("no nul in string"))?;
+        Ok(Self(s))
+    }
+}
+
+impl<const N: usize, LenT: LenType> deku::DekuSize for BluetoothString<N, LenT> {
+    const SIZE_BITS: usize = u8::SIZE_BITS * N;
 }
