@@ -1,12 +1,12 @@
-glasgow-on:
+on:
     glasgow run probe-rs -V 'A=3.3,B=5.0' --swclk 'A3' --swdio 'A2'
 
-glasgow-off:
+off:
     glasgow safe
 
-glasgow-reset:
-    just glasgow-off
-    just glasgow-on
+reset:
+    just off
+    just on
 
 flash-stock:
     probe-rs download --chip AT32F415RCT7 --probe 20b7:9db1:C3-20251207T143255Z:1:0 --protocol swd --base-address "0x8000000" ~/Dropbox/egret-stuff/firmware/display_modified.bin --binary-format bin
@@ -16,3 +16,6 @@ run:
 
 test:
     cargo test --target aarch64-apple-darwin --no-default-features --features test
+
+bloat:
+    cargo bloat --release -Z build-std=core,alloc,panic_abort -Z build-std-features=compiler-builtins-mem,optimize_for_size

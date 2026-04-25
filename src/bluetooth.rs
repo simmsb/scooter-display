@@ -12,6 +12,7 @@ use at32f4xx_hal::{
 use deku::DekuContainerRead as _;
 use embassy_executor::Spawner;
 use embassy_sync::{blocking_mutex, zerocopy_channel};
+use embassy_time::{Duration, Ticker};
 use embedded_io_async::Write as _;
 use static_cell::StaticCell;
 
@@ -20,16 +21,29 @@ use static_cell::StaticCell;
 static COMMAND_CHANNEL: StaticCell<
     zerocopy_channel::Channel<'static, blocking_mutex::raw::ThreadModeRawMutex, Command>,
 > = StaticCell::new();
-static COMMAND_BUF: StaticCell<[Command; 4]> = StaticCell::new();
+static COMMAND_BUF: StaticCell<[Command; 1]> = StaticCell::new();
+
+static EXT_COMMAND_CHANNEL: StaticCell<
+    zerocopy_channel::Channel<'static, blocking_mutex::raw::ThreadModeRawMutex, Command>,
+> = StaticCell::new();
+static EXT_COMMAND_BUF: StaticCell<[Command; 1]> = StaticCell::new();
 
 pub fn start_bluetooth(spawner: Spawner, uart: Serial2) {
     let (bt_tx, bt_rx) = uart.split();
-    let buf = COMMAND_BUF.init([const { Command::Unknown0(Unknown0Command) }; 4]);
+
+    let buf = COMMAND_BUF.init([const { Command::Unknown0(Unknown0Command) }; _]);
     let (cmd_tx, cmd_rx) = COMMAND_CHANNEL
         .init(zerocopy_channel::Channel::new(buf))
         .split();
+
+    let ext_buf = EXT_COMMAND_BUF.init([const { Command::Unknown0(Unknown0Command) }; _]);
+    let (ext_cmd_tx, ext_cmd_rx) = EXT_COMMAND_CHANNEL
+        .init(zerocopy_channel::Channel::new(ext_buf))
+        .split();
+
+    spawner.spawn(bluetooth_push_task_(ext_cmd_tx).unwrap());
     spawner.spawn(bluetooth_rx(bt_rx, cmd_tx).unwrap());
-    spawner.spawn(bluetooth_tx(bt_tx, cmd_rx).unwrap());
+    spawner.spawn(bluetooth_tx(bt_tx, cmd_rx, ext_cmd_rx).unwrap());
 }
 
 #[embassy_executor::task]
@@ -61,7 +75,7 @@ async fn bluetooth_rx_(
         };
 
         let command = match Command::from_bytes((buf, 0)) {
-            Ok(((rem, _), cmd)) => cmd,
+            Ok(((_, _), cmd)) => cmd,
             Err(e) => {
                 defmt::warn!(
                     "Command parse error: {} (in: {})",
@@ -72,10 +86,23 @@ async fn bluetooth_rx_(
             }
         };
 
-        defmt::info!("Bluetooth RX: {} {}", command, buf);
+        // some commands we trigger ourselves which causes bluetooth uc to ack it.
+        //
+        // for those, ignore them here
+        //
+        // maybe in the future we could do some reliability stuff?
+        let Some(command) = (match command {
+            Command::DeviceState(_) => None,
+            c => Some(c),
+        }) else {
+            continue;
+        };
 
-        *cmd_sender.send().await = command;
-        cmd_sender.send_done();
+        defmt::debug!("Bluetooth RX: {} {}", command, buf);
+
+        let mut slot = cmd_sender.send().await;
+        *slot = command;
+        slot.send_done();
 
         // if let Some(b) = <Rx<USART2, u8> as embedded_hal_nb::serial::Read>::read(&mut rx).ok() {
         //     defmt::info!("Bluetooth RX: {}", b);
@@ -93,14 +120,23 @@ async fn bluetooth_tx(
         blocking_mutex::raw::ThreadModeRawMutex,
         Command,
     >,
+    ext_cmd_receiver: zerocopy_channel::Receiver<
+        'static,
+        blocking_mutex::raw::ThreadModeRawMutex,
+        Command,
+    >,
 ) {
-    bluetooth_tx_(tx, cmd_receiver).await;
+    bluetooth_tx_(tx, cmd_receiver, ext_cmd_receiver).await;
 }
 
 async fn bluetooth_tx_(
     mut tx: Tx<USART2, u8>,
-
     mut cmd_receiver: zerocopy_channel::Receiver<
+        'static,
+        blocking_mutex::raw::ThreadModeRawMutex,
+        Command,
+    >,
+    mut ext_cmd_receiver: zerocopy_channel::Receiver<
         'static,
         blocking_mutex::raw::ThreadModeRawMutex,
         Command,
@@ -108,29 +144,72 @@ async fn bluetooth_tx_(
 ) {
     defmt::info!("Bluetooth TX startup");
 
-    // TODO: calc max size
-    let mut buf = [0u8; 100];
+    let mut buf = [0u8; crate::framed_reader::buffer_size_for_type::<Response>()];
 
     loop {
-        let cmd = cmd_receiver.receive().await;
+        let slot = match embassy_futures::select::select(
+            cmd_receiver.receive(),
+            ext_cmd_receiver.receive(),
+        )
+        .await
+        {
+            embassy_futures::select::Either::First(a) => a,
+            embassy_futures::select::Either::Second(a) => a,
+        };
 
-        let resp = match cmd {
+        let resp = match &*slot {
             Command::Unknown0(_) => None,
             Command::Unknown1(_) => None,
             Command::BluetoothEnabledBit(_) => None,
-            Command::SetConnectionState(_) => None,
+            Command::SetConnectionState(_) => {
+                Some(Response::SetConnectionState(SetConnectionStateResponse))
+            }
             Command::Unknown4(_) => None,
             Command::DeviceInformation(_) => {
-                Some(Response::DeviceInformation(DeviceInformationResponse))
+                Some(Response::DeviceInformation(DeviceInformationResponse {
+                    vin: BluetoothString::new("12345"),
+                    model: BluetoothString::new("Egret GTS"),
+                    hardware_version: BluetoothString::new("4.2.0"),
+                    controller_firmware_version: BluetoothString::new("1.9.2"),
+                    display_firmware_version: BluetoothString::new("3.5.5"),
+                }))
             }
-            Command::SystemStatus(_) => None,
+            Command::SystemStatus(_) => Some(Response::SystemStatus(SystemStatusResponse {
+                battery_pct: 99,
+                some_pct_str: BluetoothString::new("1.2.0"),
+                unknown: 36,
+                absolute_soh: 32,
+                charge_state: 48,
+                unknown_2: 57,
+                voltage: 48,
+                current: 16,
+            })),
             Command::SystemStatusUnknown(_) => {
                 Some(Response::SystemStatusUnknown(SystemStatusUnknownResponse))
             }
-            Command::OperationHandle(_) => None,
-            Command::DeviceState(_) => None,
+            Command::OperationCommand(_) => {
+                Some(Response::OperationCommand(OperationCommandResponse))
+            }
+            Command::DeviceState(_) => Some(Response::DeviceState(DeviceStateResponse {
+                temperature_high: false,
+                temperature_low: false,
+                charging: false,
+                lights_on: true,
+                locked: false,
+                powered_on: true,
+                speed: 0,
+                power_output: 0,
+                eco_range: 999,
+                tour_range: 999,
+                sport_range: 999,
+                range_factor: 100,
+                throttle: 0,
+                driving_mode: 3,
+                error_code: 0,
+                find_my_status: 0,
+            })),
             Command::Odometer(_) => None,
-            Command::SettingsHandler(_) => None,
+            Command::SettingsHandler(_) => Some(Response::SettingsHandler(SettingsHandlerResponse)),
             Command::SettingsReport(_) => Some(Response::SettingsReport(SettingsReportResponse {
                 activated: true,
                 display_lock: true,
@@ -157,16 +236,31 @@ async fn bluetooth_tx_(
             Command::CurrentSpeed(_) => None,
             Command::ChargeHistory(_) => None,
             Command::FailureCode(_) => None,
-            Command::BatteryAndActiveTime(_) => None,
-            Command::DriveModeHistory(_) => None,
+            Command::BatteryAndActiveTime(_) => Some(Response::BatteryAndActiveTime(
+                BatteryAndActiveTimeResponse {
+                    timestamp: 123456,
+                    battery_pct: 99,
+                    time_spent_total: 12345678,
+                },
+            )),
+            Command::DriveModeHistory(_) => {
+                Some(Response::DriveModeHistory(DriveModeHistoryResponse {
+                    timestamp: 123456,
+                    battery_pct: 99,
+                    time_total: 69696969,
+                    time_total_eco: 0,
+                    time_total_drive: 0,
+                    time_total_sport: 696942069,
+                }))
+            }
             Command::Unknown21(_) => None,
             Command::Unknown22(_) => None,
             Command::UpdateProgress(_) => None,
-            Command::ConnectedStatus(_) => None,
+            Command::ConnectedStatus(_) => Some(Response::ConnectedStatus(ConnectedStatusResponse)),
             Command::InitiateBluetoothUpdate(_) => None,
         };
 
-        cmd_receiver.receive_done();
+        slot.receive_done();
 
         if let Some(resp) = resp {
             let to_send = match crate::framed_reader::assemble_framed_deku(&mut buf, 0xaa, &resp) {
@@ -178,7 +272,51 @@ async fn bluetooth_tx_(
                 Ok(to_send) => to_send,
             };
 
+            defmt::debug!("BT Response: {} {}", resp, to_send);
+
             let _ = tx.write_all(to_send).await;
         }
     }
+}
+
+#[embassy_executor::task]
+async fn bluetooth_push_task_(
+    cmd_sender: zerocopy_channel::Sender<'static, blocking_mutex::raw::ThreadModeRawMutex, Command>,
+) {
+    bluetooth_push_task(cmd_sender).await;
+}
+
+async fn bluetooth_push_task(
+    mut cmd_sender: zerocopy_channel::Sender<
+        'static,
+        blocking_mutex::raw::ThreadModeRawMutex,
+        Command,
+    >,
+) {
+    let device_state_ticker = async {
+        // make this more frequent in real life
+        let mut ticker = Ticker::every(Duration::from_secs(10));
+
+        loop {
+            ticker.next().await;
+
+            let mut slot = cmd_sender.send().await;
+            *slot = Command::DeviceState(DeviceStateCommand);
+            slot.send_done();
+
+            let mut slot = cmd_sender.send().await;
+            *slot = Command::BatteryAndActiveTime(BatteryAndActiveTimeCommand);
+            slot.send_done();
+
+            let mut slot = cmd_sender.send().await;
+            *slot = Command::DriveModeHistory(DriveModeHistoryCommand);
+            slot.send_done();
+
+            let mut slot = cmd_sender.send().await;
+            *slot = Command::SystemStatus(SystemStatusCommand);
+            slot.send_done();
+        }
+    };
+
+    embassy_futures::join::join_array([device_state_ticker]).await;
 }

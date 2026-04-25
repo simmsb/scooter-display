@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use core::str::FromStr as _;
 
 use heapless::LenType;
@@ -87,7 +89,7 @@ pub enum Command {
     #[deku(id = 0x07)]
     SystemStatusUnknown(SystemStatusUnknownCommand),
     #[deku(id = 0x08)]
-    OperationHandle(OperationHandleCommand),
+    OperationCommand(OperationHandleCommand),
     #[deku(id = 0x09)]
     DeviceState(DeviceStateCommand),
     #[deku(id = 0x0a)]
@@ -135,7 +137,7 @@ impl Command {
             Command::DeviceInformation(_) => Endpoint::DeviceInformation,
             Command::SystemStatus(_) => Endpoint::SystemStatus,
             Command::SystemStatusUnknown(_) => Endpoint::SystemStatusUnknown,
-            Command::OperationHandle(_) => Endpoint::OperationHandle,
+            Command::OperationCommand(_) => Endpoint::OperationHandle,
             Command::DeviceState(_) => Endpoint::DeviceState,
             Command::Odometer(_) => Endpoint::Odometer,
             Command::SettingsHandler(_) => Endpoint::SettingsHandler,
@@ -182,7 +184,10 @@ impl EndpointValue for BluetoothEnabledBitCommand {
 }
 
 #[derive(defmt::Format, deku::DekuRead)]
-pub struct SetConnectionStateCommand;
+pub struct SetConnectionStateCommand {
+    connected: bool,
+}
+
 impl EndpointValue for SetConnectionStateCommand {
     fn endpoint_value() -> Endpoint {
         Endpoint::SetConnectionState
@@ -221,8 +226,66 @@ impl EndpointValue for SystemStatusUnknownCommand {
     }
 }
 
+// private static final byte SET_POWERED_ON = 1;
+// private static final byte SET_LOCKED = 2;
+// private static final byte SET_LIGHTS = 3;
+// private static final byte SET_FREE_DISPLAY_TEXT = 4;
+// private static final byte SET_DRIVING_MODE = 6;
+// private static final byte SET_TEMPERATURE_WARNING = 7;
+// private static final byte SET_RANGE_CORRECTION_FACTOR = 8;
+// private static final byte RESET_ODO_TRIP = 9;
+// private static final byte RESET_ODO_DRIVING_MODE = 10;
+// private static final byte RESET_ODO_TOTAL = 11;
+// private static final byte CLEAR_FREE_DISPLAY_TEXT = 12;
+// private static final byte SHOW_FREE_DISPLAY_TEXT = 13;
+// private static final int FREE_TEXT_FRAME_SIZE = 18;
+
 #[derive(defmt::Format, deku::DekuRead)]
-pub struct OperationHandleCommand;
+#[deku(id_type = "u8")]
+pub enum OperationHandleCommand {
+    #[deku(id = 0x1)]
+    SetPoweredOn,
+
+    #[deku(id = 0x2)]
+    SetUnlocked(bool),
+
+    #[deku(id = 0x3)]
+    SetLightsOn(bool),
+
+    #[deku(id = 0x4)]
+    SetFreeDisplayText {
+        slot: u8,
+        buf: BluetoothString<12, u8>,
+    },
+
+    #[deku(id = 0x6)]
+    SetDrivingMode(u8),
+
+    #[deku(id = 0x7)]
+    SetTemperatureWarning,
+
+    #[deku(id = 0x8)]
+    SetRangeCorrectionFactor(u8),
+
+    #[deku(id = 0x9)]
+    ResetOdoTrip,
+
+    #[deku(id = 0xA)]
+    ResetOdoForMode(u8),
+
+    #[deku(id = 0xB)]
+    ResetOdoTotal,
+
+    #[deku(id = 0xC)]
+    ClearFreeText(u8),
+
+    #[deku(id = 0x13)]
+    ShowFreeDisplayText,
+
+    #[deku(id = 0x12)]
+    FreeTextFrameSize(u8),
+}
+
 impl EndpointValue for OperationHandleCommand {
     fn endpoint_value() -> Endpoint {
         Endpoint::OperationHandle
@@ -245,8 +308,62 @@ impl EndpointValue for OdometerCommand {
     }
 }
 
+// private static final byte SET_LANGUAGE = 1;
+// private static final byte SET_DISPLAY_BRIGHTNESS = 2;
+// private static final byte SET_OPTION_UNLOCK_SCOOTER_DISPLAY = 3;
+// private static final byte SET_UNLOCK_CODE_DISPLAY = 4;
+// private static final byte SET_ACTIVATION = 5;
+// private static final byte SET_ACTIVATION_CODE = 6;
+// private static final byte SET_SPEED_LIMIT_ENABLED = 7;
+// private static final byte SET_SPEED_LIMIT = 8;
+// private static final byte SET_SPEED_UNIT = 9;
+// private static final byte SET_BLUETOOTH_ALWAYS_ON = 10;
+// private static final byte SET_SERIAL_NUMBER = 12;
+// private static final byte SET_AUTOMATIC_HEADLIGHTS = 13;
+
 #[derive(defmt::Format, deku::DekuRead)]
-pub struct SettingsHandlerCommand;
+#[deku(id_type = "u8")]
+pub enum SettingsHandlerCommand {
+    #[deku(id = 0x1)]
+    SetLanguage(u8),
+
+    #[deku(id = 0x2)]
+    SetBrightness(u8),
+
+    #[deku(id = 0x3)]
+    UnlockDisplay(bool),
+
+    #[deku(id = 0x4)]
+    SetUnlockCode(BluetoothString<4, u8>),
+
+    #[deku(id = 0x5)]
+    SetActivation(bool),
+
+    #[deku(id = 0x6)]
+    SetActivationCode(BluetoothString<4, u8>),
+
+    #[deku(id = 0x7)]
+    SetSpeedLimitEnabled(bool),
+
+    #[deku(id = 0x8)]
+    SetSpeedLimit(u8),
+
+    #[deku(id = 0x9)]
+    SetSpeedUnit(u8),
+
+    #[deku(id = 0xA)]
+    SetBluetoothAlwaysOn(bool),
+
+    #[deku(id = 0xC)]
+    SetVin(BluetoothString<15, u8>),
+
+    #[deku(id = 0xD)]
+    SetAutomaticHeadlights(bool),
+
+    #[deku(id = 0xE)]
+    SetActiveNFCKey(u8),
+}
+
 impl EndpointValue for SettingsHandlerCommand {
     fn endpoint_value() -> Endpoint {
         Endpoint::SettingsHandler
@@ -386,7 +503,7 @@ pub enum Response {
     #[deku(id = 0x07)]
     SystemStatusUnknown(SystemStatusUnknownResponse),
     #[deku(id = 0x08)]
-    OperationHandle(OperationHandleResponse),
+    OperationCommand(OperationCommandResponse),
     #[deku(id = 0x09)]
     DeviceState(DeviceStateResponse),
     #[deku(id = 0x0a)]
@@ -434,7 +551,7 @@ impl Response {
             Response::DeviceInformation(_) => Endpoint::DeviceInformation,
             Response::SystemStatus(_) => Endpoint::SystemStatus,
             Response::SystemStatusUnknown(_) => Endpoint::SystemStatusUnknown,
-            Response::OperationHandle(_) => Endpoint::OperationHandle,
+            Response::OperationCommand(_) => Endpoint::OperationHandle,
             Response::DeviceState(_) => Endpoint::DeviceState,
             Response::Odometer(_) => Endpoint::Odometer,
             Response::SettingsHandler(_) => Endpoint::SettingsHandler,
@@ -496,16 +613,83 @@ impl EndpointValue for Unknown4Response {
     }
 }
 
+#[cfg_attr(test, derive(deku::DekuRead, PartialEq, Debug))]
 #[derive(defmt::Format, deku::DekuWrite, deku::DekuSize)]
-pub struct DeviceInformationResponse;
+pub struct DeviceInformationResponse {
+    pub vin: BluetoothString<20, u8>,
+    pub model: BluetoothString<20, u8>,
+    pub hardware_version: BluetoothString<20, u8>,
+    pub controller_firmware_version: BluetoothString<20, u8>,
+    pub display_firmware_version: BluetoothString<20, u8>,
+}
+
 impl EndpointValue for DeviceInformationResponse {
     fn endpoint_value() -> Endpoint {
         Endpoint::DeviceInformation
     }
 }
 
+//  bVar3 = BATTERY_PCT;
+// SYSTEM_STATUS_BT_BUF[0] = bVar3;
+//
+//  bVar1 = can_1029_buf;
+// SYSTEM_STATUS_BT_BUF[1] = bVar1 / 10 + 0x30;
+// SYSTEM_STATUS_BT_BUF[2] = 0x2e;
+// bVar1 = can_1029_buf;
+// SYSTEM_STATUS_BT_BUF[3] = bVar1 % 10 + 0x30;
+// SYSTEM_STATUS_BT_BUF[4] = 0x2e;
+// SYSTEM_STATUS_BT_BUF[5] = 0x30;
+// SYSTEM_STATUS_BT_BUF[6] = 0;
+// return;
+//
+// SYSTEM_STATUS_BT_BUF[0x15] = 0;
+// bVar3 = WRITTEN_BY_CAN_1857._0_1_;
+// SYSTEM_STATUS_BT_BUF[0x16] = bVar3;
+// iVar2 = absolute_soh;
+// SYSTEM_STATUS_BT_BUF[0x17] = (byte)((uint)(iVar2 * 0x30) / 1000 >> 8);
+// iVar2 = absolute_soh;
+// SYSTEM_STATUS_BT_BUF[0x18] = (byte)((uint)(iVar2 * 0x30) / 1000);
+// uVar4 = Ram20000153;
+// SYSTEM_STATUS_BT_BUF[0x19] = (byte)((ushort)uVar4 >> 8);
+// bVar3 = DAT_20000150._3_1_;
+// SYSTEM_STATUS_BT_BUF[0x1a] = bVar3;
+// uVar1 = Ram20000135;
+// SYSTEM_STATUS_BT_BUF[0x1b] = (byte)(uVar1 / 100 >> 8);
+// uVar1 = Ram20000135;
+// SYSTEM_STATUS_BT_BUF[0x1c] = (byte)(uVar1 / 100);
+// iVar2 = CURRENT_POWER_OUTPUT;
+// SYSTEM_STATUS_BT_BUF[0x1d] = (byte)((uint)(iVar2 / 100) >> 8);
+// iVar2 = CURRENT_POWER_OUTPUT;
+// SYSTEM_STATUS_BT_BUF[0x1e] = (byte)(iVar2 / 100);
+// bluetooth_headers[6].buf_len = 0x26;
+// bluetooth_headers[6].buffer = SYSTEM_STATUS_BT_BUF;
+
+#[cfg_attr(test, derive(deku::DekuRead, PartialEq, Debug))]
 #[derive(defmt::Format, deku::DekuWrite, deku::DekuSize)]
-pub struct SystemStatusResponse;
+pub struct SystemStatusResponse {
+    pub battery_pct: u8,
+
+    pub some_pct_str: BluetoothString<6, u8>,
+
+    #[deku(pad_bytes_before = "13")]
+    pub unknown: u8,
+
+    #[deku(endian = "big")]
+    pub absolute_soh: u16,
+
+    #[deku(endian = "big")]
+    pub charge_state: u16,
+
+    #[deku(endian = "big")]
+    pub unknown_2: u16,
+
+    #[deku(endian = "big")]
+    pub voltage: u16,
+
+    #[deku(endian = "big")]
+    pub current: u16,
+}
+
 impl EndpointValue for SystemStatusResponse {
     fn endpoint_value() -> Endpoint {
         Endpoint::SystemStatus
@@ -521,15 +705,94 @@ impl EndpointValue for SystemStatusUnknownResponse {
 }
 
 #[derive(defmt::Format, deku::DekuWrite, deku::DekuSize)]
-pub struct OperationHandleResponse;
-impl EndpointValue for OperationHandleResponse {
+pub struct OperationCommandResponse;
+impl EndpointValue for OperationCommandResponse {
     fn endpoint_value() -> Endpoint {
         Endpoint::OperationHandle
     }
 }
 
+// boolean zFlag = PayloadUtilsKt.flag(bytes[0], 0);
+// boolean zFlag2 = PayloadUtilsKt.flag(bytes[0], 1);
+// boolean zFlag3 = PayloadUtilsKt.flag(bytes[0], 2);
+// boolean zFlag4 = PayloadUtilsKt.flag(bytes[0], 3);
+// boolean zFlag5 = PayloadUtilsKt.flag(bytes[0], 4);
+// boolean zFlag6 = PayloadUtilsKt.flag(bytes[0], 5);
+// float fUInt16 = PayloadUtilsKt.uInt16(bytes, 1) / 10.0f;
+// int iUInt8 = PayloadUtilsKt.uInt8(bytes, 3);
+// float fUInt162 = PayloadUtilsKt.uInt16(bytes, 4) / 10.0f;
+// float fUInt163 = PayloadUtilsKt.uInt16(bytes, 6) / 10.0f;
+// float fUInt164 = PayloadUtilsKt.uInt16(bytes, 8) / 10.0f;
+// int iUInt82 = PayloadUtilsKt.uInt8(bytes, 10);
+// int iUInt83 = PayloadUtilsKt.uInt8(bytes, 11);
+// DrivingMode drivingModeFromByte = DrivingMode.INSTANCE.fromByte(bytes[12]);
+// ErrorCode errorCodeFromByte = ErrorCode.INSTANCE.fromByte(bytes[13]);
+// FindMyStatus.Companion companion = FindMyStatus.INSTANCE;
+// Byte orNull = ArraysKt.getOrNull(bytes, 14);
+//
+// this.poweredOn = poweredOn;
+// this.locked = z;
+// this.lightsOn = z2;
+// this.charging = z3;
+// this.temperatureLow = z4;
+// this.temperatureHigh = z5;
+// this.speed = f;
+// this.powerOutput = i;
+// this.ecoModeRange = f2;
+// this.tourModeRange = f3;
+// this.sportModeRange = f4;
+// this.rangeFactor = i2;
+// this.throttle = i3;
+// this.drivingMode = drivingMode;
+// this.errorCode = errorCode;
+// this.findMyStatus = findMyStatus;
+
+// 01000000000000000000640001FEFF
+
+#[cfg_attr(test, derive(deku::DekuRead, PartialEq, Debug))]
 #[derive(defmt::Format, deku::DekuWrite, deku::DekuSize)]
-pub struct DeviceStateResponse;
+pub struct DeviceStateResponse {
+    #[deku(bits = 1, pad_bits_before = "2")]
+    pub temperature_high: bool,
+
+    #[deku(bits = 1)]
+    pub temperature_low: bool,
+
+    #[deku(bits = 1)]
+    pub charging: bool,
+
+    #[deku(bits = 1)]
+    pub lights_on: bool,
+
+    #[deku(bits = 1)]
+    pub locked: bool,
+
+    #[deku(bits = 1)]
+    pub powered_on: bool,
+
+    #[deku(endian = "big")]
+    pub speed: u16,
+    pub power_output: u8,
+
+    #[deku(endian = "big")]
+    pub eco_range: u16,
+
+    #[deku(endian = "big")]
+    pub tour_range: u16,
+
+    #[deku(endian = "big")]
+    pub sport_range: u16,
+
+    #[deku(endian = "big")]
+    pub range_factor: u8,
+
+    pub throttle: u8,
+    pub driving_mode: u8,
+
+    pub error_code: u8,
+    pub find_my_status: u8,
+}
+
 impl EndpointValue for DeviceStateResponse {
     fn endpoint_value() -> Endpoint {
         Endpoint::DeviceState
@@ -707,7 +970,15 @@ impl EndpointValue for FailureCodeResponse {
 }
 
 #[derive(defmt::Format, deku::DekuWrite, deku::DekuSize)]
-pub struct BatteryAndActiveTimeResponse;
+pub struct BatteryAndActiveTimeResponse {
+    pub timestamp: u32,
+
+    pub battery_pct: u8,
+
+    #[deku(bytes = 3, endian = "big")]
+    pub time_spent_total: u32,
+}
+
 impl EndpointValue for BatteryAndActiveTimeResponse {
     fn endpoint_value() -> Endpoint {
         Endpoint::BatteryAndActiveTime
@@ -715,7 +986,24 @@ impl EndpointValue for BatteryAndActiveTimeResponse {
 }
 
 #[derive(defmt::Format, deku::DekuWrite, deku::DekuSize)]
-pub struct DriveModeHistoryResponse;
+pub struct DriveModeHistoryResponse {
+    pub timestamp: u32,
+
+    pub battery_pct: u8,
+
+    #[deku(bytes = 3, endian = "big")]
+    pub time_total: u32,
+
+    #[deku(bytes = 3, endian = "big")]
+    pub time_total_eco: u32,
+
+    #[deku(bytes = 3, endian = "big")]
+    pub time_total_drive: u32,
+
+    #[deku(bytes = 3, endian = "big")]
+    pub time_total_sport: u32,
+}
+
 impl EndpointValue for DriveModeHistoryResponse {
     fn endpoint_value() -> Endpoint {
         Endpoint::DriveModeHistory
@@ -846,6 +1134,90 @@ mod test {
                 headlights_config: 2,
                 nfc_key_presence: 1,
                 active_nfc_key: 0xC59706A5,
+            }
+        )
+    }
+
+    #[test]
+    fn device_information() {
+        let serialized = &[
+            0x57, 0x55, 0x45, 0x47, 0x54, 0x33, 0x31, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36,
+            0x37, 0x38, 0x39, 0x00, 0x00, 0x00, 0x45, 0x47, 0x52, 0x45, 0x54, 0x20, 0x47, 0x54,
+            0x31, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x32, 0x2E,
+            0x30, 0x2E, 0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x30, 0x2E, 0x30, 0x2E, 0x30, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x34, 0x2E, 0x30, 0x2E,
+            0x32, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00,
+        ];
+
+        let parsed = DeviceInformationResponse::try_from(serialized.as_slice()).unwrap();
+
+        assert_eq!(
+            parsed,
+            DeviceInformationResponse {
+                vin: BluetoothString::new("WUEGT310123456789"),
+                model: BluetoothString::new("EGRET GT1"),
+                hardware_version: BluetoothString::new("2.0.0"),
+                controller_firmware_version: BluetoothString::new("0.0.0"),
+                display_firmware_version: BluetoothString::new("4.0.2"),
+            }
+        )
+    }
+
+    #[test]
+    fn device_state() {
+        let serialized = &[
+            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x64, 0x00, 0x01, 0xFE,
+            0xFF,
+        ];
+
+        let parsed = DeviceStateResponse::try_from(serialized.as_slice()).unwrap();
+
+        assert_eq!(
+            parsed,
+            DeviceStateResponse {
+                temperature_high: false,
+                temperature_low: false,
+                charging: false,
+                lights_on: false,
+                locked: false,
+                powered_on: true,
+                speed: 0,
+                power_output: 0,
+                eco_range: 0,
+                tour_range: 0,
+                sport_range: 0,
+                range_factor: 100,
+                throttle: 0,
+                driving_mode: 1,
+                error_code: 254,
+                find_my_status: 255
+            }
+        )
+    }
+
+    #[test]
+    fn system_status() {
+        let serialized = &[
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00,
+        ];
+
+        let parsed = SystemStatusResponse::try_from(serialized.as_slice()).unwrap();
+
+        assert_eq!(
+            parsed,
+            SystemStatusResponse {
+                battery_pct: 0,
+                some_pct_str: BluetoothString::new(""),
+                unknown: 0,
+                absolute_soh: 0,
+                charge_state: 0,
+                unknown_2: 0,
+                voltage: 0,
+                current: 0
             }
         )
     }

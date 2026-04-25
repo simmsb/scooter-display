@@ -101,28 +101,39 @@ pub fn assemble_framed(
     Ok(())
 }
 
+pub const fn buffer_size_for_type<T: deku::DekuSize>() -> usize {
+    T::SIZE_BITS.div_ceil(8) + 4
+}
+
 pub fn assemble_framed_deku<'a, T: deku::DekuWriter + deku::DekuSize>(
     buf: &'a mut [u8],
     start_byte: u8,
     body: &T,
 ) -> Result<&'a [u8], WriteFramedError> {
-    let total_len: u8 = T::SIZE_BYTES
+    let overhead_len = 4;
+
+    let required_buffer_len: u8 = T::SIZE_BYTES
         .unwrap()
-        .checked_add(4)
+        .checked_add(overhead_len)
         .and_then(|n| n.try_into().ok())
         .ok_or(WriteFramedError::NumericOverflow)?;
 
-    if buf.len() < total_len as usize {
+    if buf.len() < required_buffer_len as usize {
         return Err(WriteFramedError::BufferTooSmall);
     }
 
     buf[0] = start_byte;
-    buf[1] = total_len;
 
     let mut cursor = no_std_io::Cursor::new(&mut buf[2..]);
     let mut writer = Writer::new(&mut cursor);
     body.to_writer(&mut writer, ()).unwrap();
     let _ = writer.finalize();
+    let body_len = writer.bits_written.div_ceil(8);
+
+    // we know this won't overflow from the checked_add above
+    let total_len = body_len + overhead_len;
+
+    buf[1] = total_len as u8;
 
     let crc = crc::Crc::<u16>::new(&crc::CRC_16_XMODEM);
     let mut digest = crc.digest();

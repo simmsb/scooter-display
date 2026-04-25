@@ -20,7 +20,7 @@ use at32f4xx_hal::{
     signature::IDCode,
     timer::{Channel1, Timer},
     uart::{
-        self,
+        self, Serial5,
         config::{DmaConfig, Parity, StopBits, WordLength},
     },
 };
@@ -30,7 +30,7 @@ use embedded_graphics::{pixelcolor::Rgb565, prelude::*};
 use defmt_rtt as _;
 use static_cell::StaticCell;
 
-use scooter_display::{bluetooth, can, display, time_driver, ui};
+use scooter_display::{bluetooth, buttons, can, display, time_driver, ui};
 
 #[embassy_executor::task]
 async fn async_main(spawner: Spawner, dp: Peripherals, cp: cortex_m::Peripherals, clocks: Clocks) {
@@ -149,7 +149,22 @@ async fn async_main_(
     )
     .unwrap();
 
+    let uart5 = Serial5::<u8>::new(
+        dp.UART5,
+        (gpioc.pc12, gpiod.pd2),
+        uart::Config {
+            baudrate: 9600.bps(),
+            wordlength: WordLength::DataBits8,
+            parity: Parity::ParityNone,
+            stopbits: StopBits::STOP1,
+            dma: DmaConfig::None,
+        },
+        &clocks,
+    )
+    .unwrap();
+
     bluetooth::start_bluetooth(spawner, usart2);
+    buttons::start_buttons(spawner, uart5);
 
     spawner.spawn(can::can_rx(can_rx).unwrap());
     spawner.spawn(can::can_tx(can_tx).unwrap());
