@@ -1,4 +1,4 @@
-# cargo-features = ["panic-immediate-abort"]
+cargo-features = ["panic-immediate-abort"]
 
 [package]
 name = "scooter-display"
@@ -81,4 +81,4 @@ incremental = false
 lto = 'fat'
 opt-level = 's'
 overflow-checks = false
-panic = 'abort'
+panic = 'immediate-abort'
