@@ -12,7 +12,7 @@ test = false
 
 [dependencies]
 # at32f4xx-hal = { path = "../at32f4xx-hal", features = ["at32f415", "defmt"] }
-at32f4xx-hal = { git = "https://github.com/simmsb/at32f4xx-hal", features = ["at32f415", "defmt"] }
+at32f4xx-hal = { git = "https://github.com/simmsb/at32f4xx-hal", features = ["at32f415", "defmt"], optional = true }
 cortex-m-rt = { version = "0.7.5", features = ["set-sp", "set-vtor"], optional = true }
 # defmt-rtt = { version = "1.1.0", features = ["disable-blocking-mode"] }
 defmt-rtt = { version = "1.1.0", features = [] }
@@ -42,7 +42,7 @@ embassy-futures = "0.1.2"
 
 [features]
 test = ["deku/descriptive-errors"]
-app = ["dep:cortex-m-rt", "dep:panic-probe", "dep:cortex-m"]
+app = ["dep:cortex-m-rt", "dep:panic-probe", "dep:cortex-m", "dep:at32f4xx-hal"]
 default = ["app"]
 
 [patch.crates-io]
@@ -60,6 +60,9 @@ embassy-executor-timer-queue = { git = "https://github.com/embassy-rs/embassy" }
 
 # [patch."https://github.com/simmsb/at32f4xx-hal"]
 # at32f4xx-hal = { path = "../at32f4xx-hal" }
+
+# [patch."https://github.com/simmsb/at32f4xx-pac"]
+# at32f4xx-pac = { path = "../at32f4xx-pac" }
 
 [profile.dev]
 codegen-units = 1

@@ -15,5 +15,5 @@ pub mod time_driver;
 pub mod ui;
 
 mod bluetooth_proto;
-pub mod buttons_proto;
+mod buttons_proto;
 mod framed_reader;
