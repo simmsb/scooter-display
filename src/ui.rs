@@ -11,6 +11,9 @@ use embedded_graphics::{pixelcolor::Rgb565, prelude::RgbColor};
 
 use self::state::{Page, PageAction, State};
 
+// TODO: display text rendering was much faster when it rendered to a buffer first.
+// We should add that back.
+
 #[embassy_executor::task]
 pub async fn ui(mut display: crate::display::Display) {
     ui_(display).await;

@@ -17,3 +17,4 @@ pub mod ui;
 mod bluetooth_proto;
 mod buttons_proto;
 mod framed_reader;
+mod can_proto;

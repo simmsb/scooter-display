@@ -52,6 +52,7 @@ async fn buttons_rx_(rx: Serial5) {
     loop {
         let mut buf = [0; 4];
 
+        // might need read until idle or just a timeout on this
         if let Err(_) = rx.read_exact(&mut buf).await {
             defmt::warn!("read error button rx");
             continue;
