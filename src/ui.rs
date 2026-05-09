@@ -31,7 +31,7 @@ where
 
 async fn ui_(mut display: crate::display::Display) {
     let mut target =
-        EmbeddedGraphicsRenderTarget::new_hinted(&mut display.inner, color::BACKGROUND);
+        EmbeddedGraphicsRenderTarget::new_hinted(&mut display, color::BACKGROUND);
 
     let app_start = Instant::now();
 

@@ -110,6 +110,9 @@ async fn async_main_(
     backlight_pwm.set_duty(backlight_pwm.get_max_duty() / 8);
     backlight_pwm.enable();
 
+    static DISPLAY_BUF: StaticCell<[display::Color; 256]> = StaticCell::new();
+    let display_buf = DISPLAY_BUF.init_with(|| [display::Color::BLACK; _]);
+
     let display = display::init(
         gpioc.pc0.into_push_pull_output().speed(Speed::High),
         gpioc.pc13.into_push_pull_output().speed(Speed::High),
@@ -119,6 +122,7 @@ async fn async_main_(
         gpiob_bus,
         &mut delay,
         backlight_pwm,
+        display_buf,
     );
 
     let can = at32f4xx_hal::can::Can::new(dp.CAN1, gpioa.pa11, gpioa.pa12, &clocks);

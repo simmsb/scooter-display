@@ -25,14 +25,14 @@ embassy-time-driver = { version = "0.2.2" }
 embassy-sync = "0.8.0"
 embassy-time-queue-utils = "0.3.2"
 critical-section = "1.2.0"
-fugit = "0.3.9"
+fugit = "0.4.0"
 embassy-executor = { version = "0.10.0", features = ["defmt", "platform-cortex-m", "executor-thread", "embassy-time-driver"] }
 static_cell = "2.1.1"
 embassy-time = { version = "0.5.1", features = ["defmt", "defmt-timestamp-uptime", "tick-hz-32_000"] }
 # buoyant = { path = "../buoyant", features = ["glyphr"] }
 buoyant = { git = "https://github.com/simmsb/buoyant", version = "0.7.0-alpha.3", branch = "simmsb/buoyant-with-diffing" }
 # buoyant = { git = "https://github.com/riley-williams/buoyant", version = "0.7.0-alpha.3", branch = "charts" }
-heapless = { version = "0.9.2", features = ["defmt"] }
+heapless = { version = "0.9.3", features = ["defmt"] }
 glyphr = { version = "0.5.1", default-features = false, git = "https://github.com/simmsb/glyphr" }
 embedded-io-async = "0.7.0"
 embedded-hal-nb = "1.0.0"
@@ -84,4 +84,4 @@ incremental = false
 lto = 'fat'
 opt-level = 's'
 overflow-checks = false
-panic = 'immediate-abort'
+panic = 'abort'
