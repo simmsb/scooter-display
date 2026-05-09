@@ -51,7 +51,8 @@ pub trait CanValue {
 }
 
 /// 512
-#[derive(deku::DekuRead, defmt::Format, Clone, PartialEq, Eq)]
+#[derive(deku::DekuRead, deku::DekuSize, defmt::Format, Clone, PartialEq, Eq)]
+#[cfg_attr(test, derive(deku::DekuWrite, Debug))]
 pub struct ControllerStatus {
     #[deku(pad_bytes_after = "7")]
     pub battery_level: u8,
@@ -64,7 +65,8 @@ impl CanValue for ControllerStatus {
 }
 
 /// 513
-#[derive(deku::DekuRead, defmt::Format, Clone, PartialEq, Eq)]
+#[derive(deku::DekuRead, deku::DekuSize, defmt::Format, Clone, PartialEq, Eq)]
+#[cfg_attr(test, derive(deku::DekuWrite, Debug))]
 pub struct ControllerSpeed {
     #[deku(endian = "little", pad_bytes_after = "2")]
     pub motor_speed: u16,
@@ -92,7 +94,8 @@ impl CanValue for ControllerSpeed {
 }
 
 // 514
-#[derive(deku::DekuRead, defmt::Format, Clone, PartialEq, Eq)]
+#[derive(deku::DekuRead, deku::DekuSize, defmt::Format, Clone, PartialEq, Eq)]
+#[cfg_attr(test, derive(deku::DekuWrite, Debug))]
 pub struct ControllerTempMotor {
     #[deku(pad_bytes_before = "1")]
     pub temp: u8,
@@ -116,7 +119,8 @@ pub enum SpeedMode {
 }
 
 // 515
-#[derive(deku::DekuRead, defmt::Format, Clone, PartialEq, Eq)]
+#[derive(deku::DekuRead, deku::DekuSize, defmt::Format, Clone, PartialEq, Eq)]
+#[cfg_attr(test, derive(deku::DekuWrite, Debug))]
 pub struct ControllerSpeedMode {
     #[deku(pad_bytes_before = "6")]
     pub idk: u16,
@@ -129,7 +133,8 @@ impl CanValue for ControllerSpeedMode {
 }
 
 // 528
-#[derive(deku::DekuRead, defmt::Format, Clone, Copy, PartialEq, Eq)]
+#[derive(deku::DekuRead, deku::DekuSize, defmt::Format, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(test, derive(deku::DekuWrite, Debug))]
 pub struct ControllerSpeedLimit {
     #[deku(pad_bytes_after = "7")]
     pub speed_limit: bool,
@@ -143,6 +148,7 @@ impl CanValue for ControllerSpeedLimit {
 
 // 768
 #[derive(deku::DekuWrite, deku::DekuSize, defmt::Format, Clone, Copy, PartialEq, Eq, Debug)]
+#[cfg_attr(test, derive(deku::DekuRead))]
 pub struct DisplaySpeedMode {
     /// Speed mode: 0x00=locked, 0x01=eco, 0x02=trip, 0x03=sport, 0x00+0xa5=walk
     pub mode: u8,
@@ -192,9 +198,35 @@ impl<Ctx, const DATA: &'static [u8]> deku::DekuWriter<Ctx> for DekuConst<DATA> {
     fn to_writer<W: deku::no_std_io::Write + deku::no_std_io::Seek>(
         &self,
         writer: &mut deku::writer::Writer<W>,
-        ctx: Ctx,
+        _ctx: Ctx,
     ) -> Result<(), deku::DekuError> {
         DATA.to_writer(writer, deku::ctx::ByteSize(1))
+    }
+}
+
+impl<'a, Ctx, const DATA: &'static [u8]> deku::DekuReader<'a, Ctx> for DekuConst<DATA> {
+    fn from_reader_with_ctx<R: deku::no_std_io::Read + deku::no_std_io::Seek>(
+        reader: &mut deku::reader::Reader<R>,
+        _ctx: Ctx,
+    ) -> Result<Self, deku::DekuError>
+    where
+        Self: Sized,
+    {
+        for expected in DATA {
+            let got = u8::from_reader_with_ctx(reader, deku::ctx::ByteSize(1))?;
+
+            if *expected != got {
+                return Err(deku::deku_error!(
+                    deku::DekuError::Parse,
+                    "Constant value mismatch",
+                    "expected {} got {}",
+                    expected,
+                    got
+                ));
+            }
+        }
+
+        Ok(Self)
     }
 }
 
@@ -204,6 +236,7 @@ impl<const DATA: &'static [u8]> deku::DekuSize for DekuConst<DATA> {
 
 // 774
 #[derive(deku::DekuWrite, deku::DekuSize, defmt::Format, Clone, Copy, PartialEq, Eq, Debug)]
+#[cfg_attr(test, derive(deku::DekuRead))]
 #[deku(bit_order = "lsb")]
 pub struct DisplayThrottle {
     #[deku(bits = 9)]
@@ -240,6 +273,7 @@ impl CanValue for DisplayThrottle {
 
 // 1862
 #[derive(deku::DekuWrite, deku::DekuSize, defmt::Format, Clone, Copy, PartialEq, Eq, Debug)]
+#[cfg_attr(test, derive(deku::DekuRead))]
 #[deku(magic = b"\x01\xfe")]
 pub struct DisplayChargeHistoryRequest;
 
@@ -256,7 +290,8 @@ impl CanValue for DisplayChargeHistoryRequest {
 }
 
 // 1024
-#[derive(deku::DekuRead, defmt::Format, Clone, PartialEq, Eq)]
+#[derive(deku::DekuRead, deku::DekuSize, defmt::Format, Clone, PartialEq, Eq)]
+#[cfg_attr(test, derive(deku::DekuWrite, Debug))]
 pub struct BatteryCommandState {
     pub command: u16,
     pub state: u16,
@@ -272,7 +307,8 @@ impl CanValue for BatteryCommandState {
 }
 
 // 1025
-#[derive(deku::DekuRead, defmt::Format, Clone, PartialEq, Eq)]
+#[derive(deku::DekuRead, deku::DekuSize, defmt::Format, Clone, PartialEq, Eq)]
+#[cfg_attr(test, derive(deku::DekuWrite, Debug))]
 #[deku(endian = "little")]
 pub struct BatteryVoltageCurrent {
     /// Voltage in mV (4 bytes)
@@ -288,7 +324,8 @@ impl CanValue for BatteryVoltageCurrent {
 }
 
 // 1026
-#[derive(deku::DekuRead, defmt::Format, Clone, PartialEq, Eq)]
+#[derive(deku::DekuRead, deku::DekuSize, defmt::Format, Clone, PartialEq, Eq)]
+#[cfg_attr(test, derive(deku::DekuWrite, Debug))]
 #[deku(endian = "little")]
 pub struct BatteryChargeLevel {
     /// Relative state of charge (%)
@@ -304,7 +341,8 @@ impl CanValue for BatteryChargeLevel {
 }
 
 // 1027
-#[derive(deku::DekuRead, defmt::Format, Clone, PartialEq, Eq)]
+#[derive(deku::DekuRead, deku::DekuSize, defmt::Format, Clone, PartialEq, Eq)]
+#[cfg_attr(test, derive(deku::DekuWrite, Debug))]
 #[deku(endian = "little")]
 pub struct BatteryStateOfHealth {
     /// Relative SOH (%)
@@ -321,7 +359,8 @@ impl CanValue for BatteryStateOfHealth {
 }
 
 // 1028
-#[derive(deku::DekuRead, defmt::Format, Clone, PartialEq, Eq)]
+#[derive(deku::DekuRead, deku::DekuSize, defmt::Format, Clone, PartialEq, Eq)]
+#[cfg_attr(test, derive(deku::DekuWrite, Debug))]
 #[deku(endian = "little")]
 pub struct BatteryCapacityTemp {
     /// Capacity: 0x4e20 = 20,000 mAh
@@ -350,7 +389,8 @@ impl CanValue for BatteryCapacityTemp {
 
 // 1863
 /// Single charge history entry pair (two messages come in pairs).
-#[derive(deku::DekuRead, defmt::Format, Clone, PartialEq, Eq)]
+#[derive(deku::DekuRead, deku::DekuSize, defmt::Format, Clone, PartialEq, Eq)]
+#[cfg_attr(test, derive(deku::DekuWrite, Debug))]
 pub struct BatteryChargeHistoryEntry {
     /// Index
     pub idx: u8,
@@ -370,7 +410,8 @@ pub struct BatteryChargeHistoryEntry {
     pub second: u8,
 }
 
-#[derive(deku::DekuRead, defmt::Format, Clone, PartialEq, Eq)]
+#[derive(deku::DekuRead, deku::DekuSize, defmt::Format, Clone, PartialEq, Eq)]
+#[cfg_attr(test, derive(deku::DekuWrite, Debug))]
 pub struct BatteryChargeHistoryCharge {
     /// Index (matches entry)
     pub idx: u8,
@@ -480,4 +521,84 @@ impl CanMessage {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    use deku::DekuContainerRead;
+    use deku::DekuWriter;
+    use deku::ctx::Order;
+    use deku::no_std_io::Cursor;
+
+    pub fn deser_roundtrip<
+        T: deku::DekuSize
+            + for<'a> TryFrom<&'a [u8], Error = E>
+            + deku::DekuContainerWrite
+            + std::fmt::Debug
+            + PartialEq,
+        E: std::fmt::Debug,
+    >(
+        buf: &mut [u8],
+        val: &T,
+    ) {
+        assert_eq!(
+            buf.len(),
+            T::SIZE_BYTES.unwrap(),
+            "Buf should match expected size, given: {}, expected: {}",
+            buf.len(),
+            T::SIZE_BYTES.unwrap()
+        );
+
+        let n = val.to_slice(&mut buf[..T::SIZE_BYTES.unwrap()]).unwrap();
+        assert_eq!(
+            n,
+            T::SIZE_BYTES.unwrap(),
+            "Should serialize to its expected size"
+        );
+
+        let parsed = T::try_from(buf).unwrap();
+
+        assert_eq!(val, &parsed);
+    }
+
+    pub fn serde_roundtrip<
+        T: deku::DekuSize
+            + for<'a> TryFrom<&'a [u8], Error = E>
+            + deku::DekuContainerWrite
+            + std::fmt::Debug
+            + PartialEq,
+        E: std::fmt::Debug,
+    >(
+        buf: &[u8],
+    ) -> T {
+        let parsed = T::try_from(&buf[..T::SIZE_BYTES.unwrap()]).unwrap();
+        let mut d_buf = [0u8; 8];
+
+        let n = parsed
+            .to_slice(&mut d_buf[..T::SIZE_BYTES.unwrap()])
+            .unwrap();
+        assert_eq!(
+            n,
+            T::SIZE_BYTES.unwrap(),
+            "Should serialize to its expected size"
+        );
+
+        assert_eq!(
+            buf, d_buf,
+            "Bad serde roundtrip, in: {:?}, out: {:?}, parsed: {:?}",
+            buf, d_buf, parsed
+        );
+
+        parsed
+    }
+
+    #[test]
+    fn test_controller_status() {
+        let msg = serde_roundtrip::<ControllerStatus, _>(&[0, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(msg, ControllerStatus { battery_level: 0 });
+    }
+
+    #[test]
+    fn test_display_speed_mode() {
+        let mut buf = [0u8; 8];
+        deser_roundtrip(&mut buf, &DisplaySpeedMode::new(SpeedMode::Trip, true));
+        assert_eq!(buf, [0x02, 0x5a, 0x64, 0x5a, 0x64, 0, 0x32, 0]);
+    }
 }
