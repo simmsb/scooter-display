@@ -1,5 +1,7 @@
 #![cfg_attr(not(test), no_std)]
 #![allow(nonstandard_style)]
+#![allow(incomplete_features)]
+#![feature(min_adt_const_params, adt_const_params, unsized_const_params)]
 
 #[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod bluetooth;
@@ -16,5 +18,5 @@ pub mod ui;
 
 mod bluetooth_proto;
 mod buttons_proto;
-mod framed_reader;
 mod can_proto;
+mod framed_reader;
