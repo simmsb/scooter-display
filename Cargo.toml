@@ -39,6 +39,7 @@ embedded-hal-nb = "1.0.0"
 crc = "3.4.0"
 deku = { version = "0.20.3", default-features = false, features = ["bits"] }
 embassy-futures = "0.1.2"
+chrono = { version = "0.4.44", default-features = false, features = ["defmt"] }
 
 [features]
 test = ["deku/descriptive-errors"]

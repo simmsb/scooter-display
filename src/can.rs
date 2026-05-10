@@ -1,4 +1,6 @@
-use at32f4xx_hal::can::{CanRx, CanTx, Frame, filter::Mask32};
+use at32f4xx_hal::can::{CanRx, CanTx, Frame, Id, filter::Mask32};
+
+use crate::can_proto;
 
 #[embassy_executor::task]
 pub async fn can_rx(rx: CanRx<'static>) {
@@ -17,6 +19,17 @@ async fn can_rx_(mut rx: CanRx<'static>) {
                 defmt::error!("Can read err: {}", e);
                 continue;
             }
+        };
+
+        let Id::Standard(id) = msg.frame.id() else {
+            defmt::info!("Unexpected extended can message: {}", msg);
+            continue;
+        };
+
+        let Some(parsed) = can_proto::CanMessage::from_can_frame(id.as_raw(), msg.frame.data())
+        else {
+            defmt::info!("Unhandled CAN id: {}", id);
+            continue;
         };
 
         defmt::info!("Can RX: {}", msg);

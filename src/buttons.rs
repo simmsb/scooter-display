@@ -30,7 +30,7 @@ use crate::buttons_proto::{self, ButtonParser};
 // ```
 
 static BUTTON_STATE_WATCH: Watch<
-    blocking_mutex::raw::CriticalSectionRawMutex,
+    blocking_mutex::raw::ThreadModeRawMutex,
     buttons_proto::Buttons,
     4,
 > = Watch::new();
