@@ -27,5 +27,9 @@ bloat:
     cargo bloat --release -Z build-std=core,alloc,panic_abort -Z build-std-features=compiler-builtins-mem,optimize_for_size
 
 [positional-arguments]
-@asm:
+@asm *args="":
     cargo asm --rust -Z build-std=core,alloc,panic_abort -Z build-std-features=compiler-builtins-mem,optimize_for_size --bin scooter_display "$@"
+
+[positional-arguments]
+@expand *args="":
+    cargo expand -Z build-std=core,alloc,panic_abort -Z build-std-features=compiler-builtins-mem,optimize_for_size --lib "$@"

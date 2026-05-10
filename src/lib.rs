@@ -16,7 +16,8 @@ pub mod time_driver;
 #[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod ui;
 
-mod bluetooth_proto;
-mod buttons_proto;
-mod can_proto;
-mod framed_reader;
+pub mod bluetooth_proto;
+pub mod buttons_proto;
+pub mod can_proto;
+pub mod framed_reader;
+pub mod state;

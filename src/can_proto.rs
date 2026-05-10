@@ -31,19 +31,6 @@ pub enum CanId {
     BatteryStateOfHealth = 1027,
     BatteryCapacityTemp = 1028,
     BatteryChargeHistory = 1863,
-
-    // Other
-    UpdateDevice = 900,
-
-    // Not found in any firmware
-    Unknown0x600 = 1536,
-    Unknown0x601 = 1537,
-    Unknown0x603 = 1539,
-    Unknown0x606 = 1542,
-    Unknown0x607 = 1543,
-    Unknown0x7E0 = 1984,
-    Unknown0x7F8 = 2040,
-    Unknown0x238 = 568,
 }
 
 pub trait CanValue {
@@ -54,8 +41,10 @@ pub trait CanValue {
 #[derive(deku::DekuRead, deku::DekuSize, defmt::Format, Clone, PartialEq, Eq)]
 #[cfg_attr(test, derive(deku::DekuWrite, Debug))]
 pub struct ControllerStatus {
-    #[deku(pad_bytes_after = "7")]
+    #[deku(pad_bytes_after = "5")]
     pub battery_level: u8,
+    #[deku(pad_bytes_after = "1")]
+    pub status: u8,
 }
 
 impl CanValue for ControllerStatus {
@@ -67,24 +56,19 @@ impl CanValue for ControllerStatus {
 /// 513
 #[derive(deku::DekuRead, deku::DekuSize, defmt::Format, Clone, PartialEq, Eq)]
 #[cfg_attr(test, derive(deku::DekuWrite, Debug))]
+#[deku(bit_order = "lsb", endian = "little")]
 pub struct ControllerSpeed {
-    #[deku(endian = "little", pad_bytes_after = "2")]
+    #[deku(pad_bytes_after = "2")]
     pub motor_speed: u16,
-    pub status: u8,
-}
 
-impl ControllerSpeed {
-    pub fn brake_light_on(&self) -> bool {
-        self.status & 0x01 != 0
-    }
+    #[deku(bits = 1)]
+    pub walk_mode: bool,
 
-    pub fn headlight_on(&self) -> bool {
-        self.status & 0x02 != 0
-    }
+    #[deku(bits = 1)]
+    pub headlight_on: bool,
 
-    pub fn walk_mode(&self) -> bool {
-        self.status & 0x04 != 0
-    }
+    #[deku(bits = 1, pad_bits_after = "5")]
+    pub brake_light_on: bool,
 }
 
 impl CanValue for ControllerSpeed {
@@ -93,15 +77,42 @@ impl CanValue for ControllerSpeed {
     }
 }
 
+struct OffsetU8;
+
+impl OffsetU8 {
+    fn read<R: deku::no_std_io::Read + deku::no_std_io::Seek>(
+        reader: &mut deku::reader::Reader<R>,
+        offset: i8,
+    ) -> Result<u8, deku::DekuError> {
+        let value = <u8 as deku::DekuReader>::from_reader_with_ctx(reader, ())?;
+        Ok(value.saturating_add_signed(offset))
+    }
+
+    fn write<W: deku::no_std_io::Write + deku::no_std_io::Seek>(
+        writer: &mut deku::writer::Writer<W>,
+        value: u8,
+        offset: i8,
+    ) -> Result<(), deku::DekuError> {
+        use deku::DekuWriter;
+
+        value.saturating_add_signed(-offset).to_writer(writer, ())
+    }
+}
+
 // 514
 #[derive(deku::DekuRead, deku::DekuSize, defmt::Format, Clone, PartialEq, Eq)]
 #[cfg_attr(test, derive(deku::DekuWrite, Debug))]
+#[deku(endian = "little")]
 pub struct ControllerTempMotor {
-    #[deku(pad_bytes_before = "1")]
+    #[deku(
+        pad_bytes_before = "1",
+        reader = "OffsetU8::read(deku::reader, 40i8)",
+        writer = "OffsetU8::write(deku::writer, self.temp, 40i8)"
+    )]
     pub temp: u8,
 
-    #[deku(bytes = "3", endian = "little", pad_bytes_after = "4")]
-    pub voltage: u32,
+    #[deku(bytes = "2", pad_bytes_after = "4")]
+    pub voltage: u16,
 }
 
 impl CanValue for ControllerTempMotor {
@@ -121,6 +132,7 @@ pub enum SpeedMode {
 // 515
 #[derive(deku::DekuRead, deku::DekuSize, defmt::Format, Clone, PartialEq, Eq)]
 #[cfg_attr(test, derive(deku::DekuWrite, Debug))]
+#[deku(endian = "little")]
 pub struct ControllerSpeedMode {
     #[deku(pad_bytes_before = "6")]
     pub idk: u16,
@@ -151,6 +163,7 @@ impl CanValue for ControllerSpeedLimit {
 #[cfg_attr(test, derive(deku::DekuRead))]
 pub struct DisplaySpeedMode {
     /// Speed mode: 0x00=locked, 0x01=eco, 0x02=trip, 0x03=sport, 0x00+0xa5=walk
+    /// Controller supports up to 0x9 for some reason?
     pub mode: u8,
     /// Mode high byte
     pub mode_high: u8,
@@ -179,6 +192,11 @@ impl DisplaySpeedMode {
         }
     }
 
+    pub fn with_custom_speed_mode(mut self, speed_mode: u8) -> Self {
+        self.mode = speed_mode;
+        self
+    }
+
     pub fn with_walk_counter(mut self, counter: u8) -> Self {
         self.walk_counter = counter;
         self
@@ -192,7 +210,7 @@ impl CanValue for DisplaySpeedMode {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, defmt::Format)]
-struct DekuConst<const DATA: &'static [u8]>;
+pub struct DekuConst<const DATA: &'static [u8]>;
 
 impl<Ctx, const DATA: &'static [u8]> deku::DekuWriter<Ctx> for DekuConst<DATA> {
     fn to_writer<W: deku::no_std_io::Write + deku::no_std_io::Seek>(
@@ -237,17 +255,17 @@ impl<const DATA: &'static [u8]> deku::DekuSize for DekuConst<DATA> {
 // 774
 #[derive(deku::DekuWrite, deku::DekuSize, defmt::Format, Clone, Copy, PartialEq, Eq, Debug)]
 #[cfg_attr(test, derive(deku::DekuRead))]
-#[deku(bit_order = "lsb")]
+#[deku(bit_order = "lsb", endian = "little")]
 pub struct DisplayThrottle {
     #[deku(bits = 9)]
     pub throttle: u16,
 
     #[deku(bits = 1)]
     pub left_blinker: bool,
-    #[deku(bits = 1)]
+    #[deku(bits = 1, pad_bits_after = "5")]
     pub right_blinker: bool,
 
-    #[deku(pad_bits_before = "5", pad_bytes_before = "1")]
+    #[deku(pad_bytes_before = "1")]
     pub speed_limit: u8,
 
     pub magic: DekuConst<{ &[2, 0, 0, 0] }>,
@@ -366,19 +384,17 @@ pub struct BatteryCapacityTemp {
     /// Capacity: 0x4e20 = 20,000 mAh
     pub capacity_mah: u16,
 
-    /// Battery charged flag (byte 4)
+    /// Battery charged flag
     #[deku(pad_bytes_before = "2")]
     pub battery_charged: bool,
 
-    #[deku(pad_bytes_before = "2")]
-    pub battery_temp_raw: u16,
-}
-
-impl BatteryCapacityTemp {
-    pub fn battery_temp(&self) -> f32 {
-        // Firmware stores (bytes 7&6 - 2731) / 10
-        (self.battery_temp_raw as i16 as i32 - 2731) as f32 / 10.0
-    }
+    /// Stored as celcius * 10
+    #[deku(
+        pad_bytes_before = "1",
+        map = "|x: u16| -> Result<_, deku::DekuError> { Ok(x as i16 - 2731) }",
+        writer = "(self.battery_temp + 2731).to_writer(deku::writer, ())"
+    )]
+    pub battery_temp: i16,
 }
 
 impl CanValue for BatteryCapacityTemp {
@@ -395,8 +411,10 @@ pub struct BatteryChargeHistoryEntry {
     /// Index
     pub idx: u8,
 
+    /// Unknown value, firmware stores it but never reads.
+    pub unknown: u8,
+
     /// Year (2000+)
-    #[deku(pad_bytes_before = "1")]
     pub year: u8,
     /// Month
     pub month: u8,
@@ -416,7 +434,9 @@ pub struct BatteryChargeHistoryCharge {
     /// Index (matches entry)
     pub idx: u8,
 
-    #[deku(pad_bytes_before = "1")]
+    /// Unknown value, firmware stores it but never reads.
+    pub unknown: u8,
+
     pub charge: u16,
 }
 
@@ -522,10 +542,10 @@ impl CanMessage {
 mod test {
     use super::*;
 
-    use deku::DekuContainerRead;
-    use deku::DekuWriter;
     use deku::ctx::Order;
     use deku::no_std_io::Cursor;
+    use deku::DekuContainerRead;
+    use deku::DekuWriter;
 
     pub fn deser_roundtrip<
         T: deku::DekuSize
@@ -569,11 +589,9 @@ mod test {
         buf: &[u8],
     ) -> T {
         let parsed = T::try_from(&buf[..T::SIZE_BYTES.unwrap()]).unwrap();
-        let mut d_buf = [0u8; 8];
+        let d_buf = &mut [0u8; 8][..T::SIZE_BYTES.unwrap()];
 
-        let n = parsed
-            .to_slice(&mut d_buf[..T::SIZE_BYTES.unwrap()])
-            .unwrap();
+        let n = parsed.to_slice(d_buf).unwrap();
         assert_eq!(
             n,
             T::SIZE_BYTES.unwrap(),
@@ -592,7 +610,31 @@ mod test {
     #[test]
     fn test_controller_status() {
         let msg = serde_roundtrip::<ControllerStatus, _>(&[0, 0, 0, 0, 0, 0, 0, 0]);
-        assert_eq!(msg, ControllerStatus { battery_level: 0 });
+        assert_eq!(
+            msg,
+            ControllerStatus {
+                battery_level: 0,
+                status: 0
+            }
+        );
+
+        let msg = serde_roundtrip::<ControllerStatus, _>(&[100, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(
+            msg,
+            ControllerStatus {
+                battery_level: 100,
+                status: 0
+            }
+        );
+
+        let msg = serde_roundtrip::<ControllerStatus, _>(&[100, 0, 0, 0, 0, 0, 2, 0]);
+        assert_eq!(
+            msg,
+            ControllerStatus {
+                battery_level: 100,
+                status: 2
+            }
+        );
     }
 
     #[test]
@@ -600,5 +642,342 @@ mod test {
         let mut buf = [0u8; 8];
         deser_roundtrip(&mut buf, &DisplaySpeedMode::new(SpeedMode::Trip, true));
         assert_eq!(buf, [0x02, 0x5a, 0x64, 0x5a, 0x64, 0, 0x32, 0]);
+
+        deser_roundtrip(&mut buf, &DisplaySpeedMode::new(SpeedMode::Eco, true));
+        assert_eq!(buf, [0x01, 0x5a, 0x64, 0x5a, 0x64, 0, 0x1e, 0]);
+
+        deser_roundtrip(&mut buf, &DisplaySpeedMode::new(SpeedMode::Walk, false));
+        assert_eq!(buf, [0x00, 0xa5, 0x00, 0x5a, 0x64, 0, 0, 0]);
+
+        deser_roundtrip(
+            &mut buf,
+            &DisplaySpeedMode::new(SpeedMode::Walk, false).with_walk_counter(2),
+        );
+        assert_eq!(buf, [0x00, 0xa5, 0x00, 0x5a, 0x64, 0, 0, 2]);
+    }
+
+    #[test]
+    fn test_controller_speed() {
+        let msg = serde_roundtrip::<ControllerSpeed, _>(&[0, 0, 0, 0, 0]);
+        assert_eq!(
+            msg,
+            ControllerSpeed {
+                motor_speed: 0,
+                walk_mode: false,
+                headlight_on: false,
+                brake_light_on: false
+            }
+        );
+
+        let msg = serde_roundtrip::<ControllerSpeed, _>(&[7, 4, 0, 0, 0]);
+        assert_eq!(
+            msg,
+            ControllerSpeed {
+                motor_speed: 1031,
+                walk_mode: false,
+                headlight_on: false,
+                brake_light_on: false
+            }
+        );
+
+        let msg = serde_roundtrip::<ControllerSpeed, _>(&[7, 4, 0, 0, 0b1]);
+        assert_eq!(
+            msg,
+            ControllerSpeed {
+                motor_speed: 1031,
+                walk_mode: true,
+                headlight_on: false,
+                brake_light_on: false
+            }
+        );
+
+        let msg = serde_roundtrip::<ControllerSpeed, _>(&[7, 4, 0, 0, 0b100]);
+        assert_eq!(
+            msg,
+            ControllerSpeed {
+                motor_speed: 1031,
+                walk_mode: false,
+                headlight_on: false,
+                brake_light_on: true
+            }
+        );
+
+        let msg = serde_roundtrip::<ControllerSpeed, _>(&[7, 4, 0, 0, 0b111]);
+        assert_eq!(
+            msg,
+            ControllerSpeed {
+                motor_speed: 1031,
+                walk_mode: true,
+                headlight_on: true,
+                brake_light_on: true
+            }
+        );
+    }
+
+    #[test]
+    fn test_controller_temp_motor() {
+        let msg = serde_roundtrip::<ControllerTempMotor, _>(&[0; 8]);
+        assert_eq!(
+            msg,
+            ControllerTempMotor {
+                temp: 40,
+                voltage: 0
+            }
+        );
+
+        let msg = serde_roundtrip::<ControllerTempMotor, _>(&[0, 0x11, 0x1c, 0xd4, 0, 0, 0, 0]);
+        assert_eq!(
+            msg,
+            ControllerTempMotor {
+                temp: 57,
+                voltage: 54300
+            }
+        );
+
+        let msg = serde_roundtrip::<ControllerTempMotor, _>(&[0, 0x13, 0xe4, 0xd4, 0, 0, 0, 0]);
+        assert_eq!(
+            msg,
+            ControllerTempMotor {
+                temp: 59,
+                voltage: 54500
+            }
+        );
+    }
+
+    #[test]
+    fn test_controller_speed_mode() {
+        let msg = serde_roundtrip::<ControllerSpeedMode, _>(&[0; 8]);
+        assert_eq!(msg, ControllerSpeedMode { idk: 0 });
+
+        let msg = serde_roundtrip::<ControllerSpeedMode, _>(&[0, 0, 0, 0, 0, 0, 0x43, 0x12]);
+        assert_eq!(msg, ControllerSpeedMode { idk: 0x1243 });
+    }
+
+    #[test]
+    fn test_controller_speed_limit() {
+        let msg = serde_roundtrip::<ControllerSpeedLimit, _>(&[0; 8]);
+        assert_eq!(msg, ControllerSpeedLimit { speed_limit: false });
+
+        let msg = serde_roundtrip::<ControllerSpeedLimit, _>(&[1, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(msg, ControllerSpeedLimit { speed_limit: true });
+    }
+
+    #[test]
+    fn test_battery_command_state() {
+        let msg = serde_roundtrip::<BatteryCommandState, _>(&[1, 0, 0xc, 0, 0, 0, 0, 0]);
+        assert_eq!(
+            msg,
+            BatteryCommandState {
+                command: 1,
+                state: 12,
+                estimated_range: 0
+            }
+        );
+
+        let msg = serde_roundtrip::<BatteryCommandState, _>(&[1, 0x40, 0x2c, 0x40, 0, 0, 0, 0]);
+        assert_eq!(
+            msg,
+            BatteryCommandState {
+                command: 0b100000000000001,
+                state: 0b100000000101100,
+                estimated_range: 0
+            }
+        );
+    }
+
+    #[test]
+    fn test_battery_voltage_current() {
+        let msg = serde_roundtrip::<BatteryVoltageCurrent, _>(&[
+            0x00, 0xc5, 0x00, 0x00, 0xc8, 0xfc, 0xff, 0xff,
+        ]);
+        assert_eq!(
+            msg,
+            BatteryVoltageCurrent {
+                voltage_mv: 50432,
+                current_ma: -824
+            }
+        );
+
+        let msg = serde_roundtrip::<BatteryVoltageCurrent, _>(&[
+            0x00, 0xd3, 0x00, 0x00, 0x9f, 0xff, 0xff, 0xff,
+        ]);
+        assert_eq!(
+            msg,
+            BatteryVoltageCurrent {
+                voltage_mv: 54016,
+                current_ma: -97
+            }
+        );
+
+        let msg = serde_roundtrip::<BatteryVoltageCurrent, _>(&[
+            0x00, 0xd4, 0x00, 0x00, 0x2c, 0x05, 0x00, 0x00,
+        ]);
+        assert_eq!(
+            msg,
+            BatteryVoltageCurrent {
+                voltage_mv: 54272,
+                current_ma: 1324
+            }
+        );
+    }
+
+    #[test]
+    fn test_battery_charge_level() {
+        let msg = serde_roundtrip::<BatteryChargeLevel, _>(&[0x3f, 0, 0, 0, 0xbf, 0x31, 0, 0]);
+        assert_eq!(
+            msg,
+            BatteryChargeLevel {
+                relative_soc: 63,
+                absolute_soc_mah: 12735
+            }
+        );
+
+        let msg = serde_roundtrip::<BatteryChargeLevel, _>(&[0x62, 0, 0, 0, 0x46, 0x4d, 0, 0]);
+        assert_eq!(
+            msg,
+            BatteryChargeLevel {
+                relative_soc: 98,
+                absolute_soc_mah: 19782
+            }
+        );
+
+        let msg = serde_roundtrip::<BatteryChargeLevel, _>(&[0x64, 0, 0, 0, 0x77, 0x4d, 0, 0]);
+        assert_eq!(
+            msg,
+            BatteryChargeLevel {
+                relative_soc: 100,
+                absolute_soc_mah: 19831
+            }
+        );
+    }
+
+    #[test]
+    fn test_battery_state_of_health() {
+        let msg = serde_roundtrip::<BatteryStateOfHealth, _>(&[0x64, 0, 0, 0, 0x80, 0x4d, 0, 0]);
+        assert_eq!(
+            msg,
+            BatteryStateOfHealth {
+                relative_soh: 100,
+                absolute_soh_mah: 19840
+            }
+        );
+
+        let msg = serde_roundtrip::<BatteryStateOfHealth, _>(&[0x64, 0, 0, 0, 0x20, 0x4e, 0, 0]);
+        assert_eq!(
+            msg,
+            BatteryStateOfHealth {
+                relative_soh: 100,
+                absolute_soh_mah: 20000
+            }
+        );
+    }
+
+    #[test]
+    fn test_battery_capacity_temp() {
+        let msg = serde_roundtrip::<BatteryCapacityTemp, _>(&[0x20, 0x4e, 0, 0, 1, 0, 0xbe, 0x0b]);
+        assert_eq!(
+            msg,
+            BatteryCapacityTemp {
+                capacity_mah: 20000,
+                battery_charged: true,
+                battery_temp: 275
+            }
+        );
+
+        let msg = serde_roundtrip::<BatteryCapacityTemp, _>(&[0x20, 0x4e, 0, 0, 0, 0, 0x91, 0x0b]);
+        assert_eq!(
+            msg,
+            BatteryCapacityTemp {
+                capacity_mah: 20000,
+                battery_charged: false,
+                battery_temp: 230
+            }
+        );
+    }
+
+    #[test]
+    fn test_battery_charge_history_entry() {
+        let msg = serde_roundtrip::<BatteryChargeHistoryEntry, _>(&[
+            0x0b, 0x01, 0x19, 0x08, 0x1a, 0x12, 0x20, 0x1c,
+        ]);
+        assert_eq!(
+            msg,
+            BatteryChargeHistoryEntry {
+                idx: 11,
+                unknown: 1,
+                year: 25,
+                month: 8,
+                day: 26,
+                hour: 18,
+                minute: 32,
+                second: 28
+            }
+        );
+
+        let msg = serde_roundtrip::<BatteryChargeHistoryEntry, _>(&[
+            0x04, 0x02, 0x19, 0x08, 0x14, 0x06, 0x0f, 0x24,
+        ]);
+        assert_eq!(
+            msg,
+            BatteryChargeHistoryEntry {
+                idx: 4,
+                unknown: 2,
+                year: 25,
+                month: 8,
+                day: 20,
+                hour: 6,
+                minute: 15,
+                second: 36
+            }
+        );
+    }
+
+    #[test]
+    fn test_battery_charge_history_charge() {
+        let msg = serde_roundtrip::<BatteryChargeHistoryCharge, _>(&[0xa, 0x02, 0x5d, 0x4e]);
+        assert_eq!(
+            msg,
+            BatteryChargeHistoryCharge {
+                idx: 10,
+                unknown: 2,
+                charge: 20061
+            }
+        );
+
+        let msg = serde_roundtrip::<BatteryChargeHistoryCharge, _>(&[0x1, 0x01, 0x7a, 0x07]);
+        assert_eq!(
+            msg,
+            BatteryChargeHistoryCharge {
+                idx: 1,
+                unknown: 1,
+                charge: 1914
+            }
+        );
+    }
+
+    #[test]
+    fn test_display_throttle() {
+        let mut buf = [0u8; 8];
+        deser_roundtrip(&mut buf, &DisplayThrottle::new(511, false, false, 0));
+        assert_eq!(buf, [0xff, 0b1, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00]);
+
+        deser_roundtrip(&mut buf, &DisplayThrottle::new(511, true, false, 0));
+        assert_eq!(buf, [0xff, 0b011, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00]);
+
+        deser_roundtrip(&mut buf, &DisplayThrottle::new(511, true, true, 2));
+        assert_eq!(buf, [0xff, 0b111, 0x00, 0x02, 0x02, 0x00, 0x00, 0x00]);
+
+        deser_roundtrip(&mut buf, &DisplayThrottle::new(1, false, true, 2));
+        assert_eq!(buf, [0x01, 0b100, 0x00, 0x02, 0x02, 0x00, 0x00, 0x00]);
+
+        deser_roundtrip(&mut buf, &DisplayThrottle::new(256, false, true, 2));
+        assert_eq!(buf, [0x00, 0b101, 0x00, 0x02, 0x02, 0x00, 0x00, 0x00]);
+    }
+
+    #[test]
+    fn test_display_charge_history_request() {
+        let mut buf = [0u8; 2];
+        deser_roundtrip(&mut buf, &DisplayChargeHistoryRequest::new());
+        assert_eq!(buf, [0x01, 0xFE]);
     }
 }
