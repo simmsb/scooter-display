@@ -137,10 +137,10 @@ pub fn assemble_framed_deku<'a, T: deku::DekuWriter + deku::DekuSize>(
 
     let crc = crc::Crc::<u16>::new(&crc::CRC_16_XMODEM);
     let mut digest = crc.digest();
-    digest.update(&buf[0..(total_len as usize - 2)]);
+    digest.update(&buf[0..(total_len - 2)]);
     let calculated_crc = digest.finalize().to_le_bytes();
 
-    buf[(total_len as usize - 2)..(total_len as usize)].copy_from_slice(&calculated_crc);
+    buf[(total_len - 2)..total_len].copy_from_slice(&calculated_crc);
 
-    Ok(&buf[..(total_len as usize)])
+    Ok(&buf[..total_len])
 }

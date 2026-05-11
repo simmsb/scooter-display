@@ -291,6 +291,12 @@ impl CanValue for DisplayThrottle {
 #[deku(magic = b"\x01\xfe")]
 pub struct DisplayChargeHistoryRequest;
 
+impl Default for DisplayChargeHistoryRequest {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DisplayChargeHistoryRequest {
     pub fn new() -> Self {
         DisplayChargeHistoryRequest
@@ -472,43 +478,43 @@ impl CanMessage {
     pub fn from_can_frame(can_id: u16, data: &[u8]) -> Option<Self> {
         use deku::DekuContainerRead as _;
         match can_id {
-            512 => ControllerStatus::from_bytes((&data, 0))
+            512 => ControllerStatus::from_bytes((data, 0))
                 .ok()
                 .map(|(_, x)| x)
                 .map(CanMessage::ControllerStatus),
-            513 => ControllerSpeed::from_bytes((&data, 0))
+            513 => ControllerSpeed::from_bytes((data, 0))
                 .ok()
                 .map(|(_, x)| x)
                 .map(CanMessage::ControllerSpeed),
-            514 => ControllerTempMotor::from_bytes((&data, 0))
+            514 => ControllerTempMotor::from_bytes((data, 0))
                 .ok()
                 .map(|(_, x)| x)
                 .map(CanMessage::ControllerTempMotor),
-            515 => ControllerSpeedMode::from_bytes((&data, 0))
+            515 => ControllerSpeedMode::from_bytes((data, 0))
                 .ok()
                 .map(|(_, x)| x)
                 .map(CanMessage::ControllerSpeedMode),
-            528 => ControllerSpeedLimit::from_bytes((&data, 0))
+            528 => ControllerSpeedLimit::from_bytes((data, 0))
                 .ok()
                 .map(|(_, x)| x)
                 .map(CanMessage::ControllerSpeedLimit),
-            1024 => BatteryCommandState::from_bytes((&data, 0))
+            1024 => BatteryCommandState::from_bytes((data, 0))
                 .ok()
                 .map(|(_, x)| x)
                 .map(CanMessage::BatteryCommandState),
-            1025 => BatteryVoltageCurrent::from_bytes((&data, 0))
+            1025 => BatteryVoltageCurrent::from_bytes((data, 0))
                 .ok()
                 .map(|(_, x)| x)
                 .map(CanMessage::BatteryVoltageCurrent),
-            1026 => BatteryChargeLevel::from_bytes((&data, 0))
+            1026 => BatteryChargeLevel::from_bytes((data, 0))
                 .ok()
                 .map(|(_, x)| x)
                 .map(CanMessage::BatteryChargeLevel),
-            1027 => BatteryStateOfHealth::from_bytes((&data, 0))
+            1027 => BatteryStateOfHealth::from_bytes((data, 0))
                 .ok()
                 .map(|(_, x)| x)
                 .map(CanMessage::BatteryStateOfHealth),
-            1028 => BatteryCapacityTemp::from_bytes((&data, 0))
+            1028 => BatteryCapacityTemp::from_bytes((data, 0))
                 .ok()
                 .map(|(_, x)| x)
                 .map(CanMessage::BatteryCapacityTemp),

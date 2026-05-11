@@ -1072,7 +1072,7 @@ impl<const N: usize, LenT: LenType> deku::DekuWriter for BluetoothString<N, LenT
         writer: &mut deku::writer::Writer<W>,
         ctx: (),
     ) -> Result<(), deku::DekuError> {
-        let remainder = N - self.0.as_bytes().len();
+        let remainder = N - self.0.len();
         self.0.as_bytes().to_writer(writer, ctx)?;
         for _ in 0..remainder {
             writer.write_bytes(&[0u8])?;

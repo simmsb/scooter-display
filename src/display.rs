@@ -113,7 +113,7 @@ impl DrawTarget for Display {
 
         // partial fb too small, fallback to non buffered
         if rows_per_chunk == 0 {
-            return self.inner.fill_contiguous(area, colors);
+            self.inner.fill_contiguous(area, colors)
         } else {
             let mut colors = colors.into_iter();
             let chunks = area.size.height / rows_per_chunk as u32;

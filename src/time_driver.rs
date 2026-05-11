@@ -260,7 +260,7 @@ impl Driver for TmrDriver {
 
         let period = self.period.load(Ordering::Relaxed);
         compiler_fence(Ordering::Acquire);
-        let counter = r.cval().read().bits() as u16;
+        let counter = r.cval().read().bits();
         calc_now(period, counter)
     }
 

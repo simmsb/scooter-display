@@ -39,7 +39,7 @@ async fn ui_(mut display: crate::display::Display) {
             page: Page::Settings,
             page_action: None,
         },
-        target.size().into(),
+        target.size(),
         view::root_view,
     )
     .with_roles(Role::Button | Role::Container);
