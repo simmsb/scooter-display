@@ -4,21 +4,34 @@ static STATE_UPDATES: embassy_sync::watch::Watch<
     embassy_sync::blocking_mutex::raw::ThreadModeRawMutex,
     (),
     4,
-> = Watch::new_with(());
+> = embassy_sync::watch::Watch::new_with(());
+
 static STATE: embassy_sync::blocking_mutex::Mutex<
     embassy_sync::blocking_mutex::raw::ThreadModeRawMutex,
     SystemState,
-> = embassy_sync::blocking_mutex::Mutex::new(Default::default());
+> = embassy_sync::blocking_mutex::Mutex::new(SystemState::DEFAULT);
 
 pub fn read_state<T>(f: impl for<'a> FnOnce(&'a SystemState) -> T) -> T {
     STATE.lock(f)
 }
 
-static CAN_MESSAGES: embassy_sync::channel::Channel<
+fn update_state(f: impl for<'a> FnOnce(&'a mut SystemState)) {
+    unsafe {
+        STATE.lock_mut(f);
+    }
+}
+
+pub static CAN_MESSAGES: embassy_sync::channel::Channel<
     embassy_sync::blocking_mutex::raw::ThreadModeRawMutex,
     CanMessage,
     1,
-> = embassy_sync::channel::Channell::new();
+> = embassy_sync::channel::Channel::new();
+
+pub static BT_COMMANDS: embassy_sync::channel::Channel<
+    embassy_sync::blocking_mutex::raw::ThreadModeRawMutex,
+    (),
+    1,
+> = embassy_sync::channel::Channel::new();
 
 #[derive(PartialEq, Eq, defmt::Format, Default)]
 pub struct BatteryLevel {
@@ -72,6 +85,62 @@ pub struct SystemState {
     pub battery_info: BatteryInfo,
 
     pub charges: [Option<BatteryChargeEntry>; 16],
+}
+
+impl SystemState {
+    const DEFAULT: Self = SystemState {
+        motor_speed: 0,
+        headlight_on: false,
+        brake_light_on: false,
+        controller_temp: 0,
+        system_voltage: SystemVoltage {
+            from_controller: 0,
+            from_battery: 0,
+        },
+        controller_speed_limit_mode: false,
+        battery_current: 0,
+        battery_level: BatteryLevel {
+            from_controller: 0,
+            from_battery: 0,
+        },
+        battery_debug: BatteryDebug {
+            command: 0,
+            state: 0,
+            estimated_range: 0,
+        },
+        battery_info: BatteryInfo {
+            relative_soc: 0,
+            absolute_soc: 0,
+            relative_soh: 0,
+            absolute_soh: 0,
+            capacity: 0,
+            charged: false,
+            temperature: 0,
+        },
+        charges: [const { None }; _],
+    };
+}
+
+#[embassy_executor::task]
+pub async fn system_state_updater() {
+    system_state_updater_().await
+}
+
+async fn system_state_updater_() {
+    let can_messages = CAN_MESSAGES.receiver();
+    let bt_commands = BT_COMMANDS.receiver();
+    let state_updated = STATE_UPDATES.sender();
+
+    loop {
+        match embassy_futures::select::select(can_messages.receive(), bt_commands.receive()).await {
+            embassy_futures::select::Either::First(can_msg) => {
+                update_state(|s| s.update_from_can_message(&can_msg));
+            }
+            embassy_futures::select::Either::Second(_) => {}
+        }
+
+        state_updated.send(());
+    }
 }
 
 impl SystemState {

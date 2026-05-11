@@ -8,10 +8,14 @@ pub async fn can_rx(rx: CanRx<'static>) {
 }
 
 async fn can_rx_(mut rx: CanRx<'static>) {
+    let state_can_ch = crate::state::CAN_MESSAGES.sender();
+
     defmt::info!("Can RX startup");
+
     rx.modify_filters()
         .enable_bank(0, at32f4xx_hal::can::Fifo::Fifo0, Mask32::accept_all())
         .enable_bank(1, at32f4xx_hal::can::Fifo::Fifo1, Mask32::accept_all());
+
     loop {
         let msg = match rx.read().await {
             Ok(msg) => msg,
@@ -28,11 +32,13 @@ async fn can_rx_(mut rx: CanRx<'static>) {
 
         let Some(parsed) = can_proto::CanMessage::from_can_frame(id.as_raw(), msg.frame.data())
         else {
-            defmt::info!("Unhandled CAN id: {}", id);
+            defmt::info!("Unhandled CAN id: {}", id.as_raw());
             continue;
         };
 
         defmt::info!("Can RX: {}", msg);
+
+        state_can_ch.send(parsed).await;
     }
 }
 

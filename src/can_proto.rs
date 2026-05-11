@@ -542,10 +542,10 @@ impl CanMessage {
 mod test {
     use super::*;
 
-    use deku::ctx::Order;
-    use deku::no_std_io::Cursor;
     use deku::DekuContainerRead;
     use deku::DekuWriter;
+    use deku::ctx::Order;
+    use deku::no_std_io::Cursor;
 
     pub fn deser_roundtrip<
         T: deku::DekuSize

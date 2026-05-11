@@ -30,7 +30,7 @@ use embedded_graphics::{pixelcolor::Rgb565, prelude::*};
 use defmt_rtt as _;
 use static_cell::StaticCell;
 
-use scooter_display::{bluetooth, buttons, can, display, time_driver, ui};
+use scooter_display::{bluetooth, buttons, can, display, state, time_driver, ui};
 
 #[embassy_executor::task]
 async fn async_main(spawner: Spawner, dp: Peripherals, cp: cortex_m::Peripherals, clocks: Clocks) {
@@ -173,6 +173,7 @@ async fn async_main_(
     spawner.spawn(can::can_rx(can_rx).unwrap());
     spawner.spawn(can::can_tx(can_tx).unwrap());
     spawner.spawn(ui::ui(display).unwrap());
+    spawner.spawn(state::system_state_updater().unwrap());
 
     loop {
         defmt::debug!("Tick");
