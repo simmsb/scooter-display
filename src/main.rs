@@ -3,21 +3,17 @@
 
 // extern crate alloc;
 
-use core::num::{NonZeroU8, NonZeroU16};
-
 use defmt::info;
 use embassy_executor::Spawner;
 use panic_probe as _;
 
 use at32f4xx_hal::{
     self as hal,
-    can::util::NominalBitTiming,
     crm::{Clocks, Enable, Reset},
-    gpio::{GpioBusExt as _, OutputPin, PinSpeed as _, Speed},
-    pac::{GPIOA, Peripherals},
+    gpio::{GpioBusExt as _, PinSpeed as _, Speed},
+    pac::Peripherals,
     prelude::*,
     serial::Serial2,
-    signature::IDCode,
     timer::{Channel1, Timer},
     uart::{
         self, Serial5,
@@ -25,7 +21,7 @@ use at32f4xx_hal::{
     },
 };
 use cortex_m_rt::entry;
-use embedded_graphics::{pixelcolor::Rgb565, prelude::*};
+use embedded_graphics::prelude::*;
 
 use defmt_rtt as _;
 use static_cell::StaticCell;
@@ -56,7 +52,7 @@ async fn async_main_(
     let gpioa = dp.GPIOA.split();
     let gpioc = dp.GPIOC.split();
     let gpiod = dp.GPIOD.split();
-    let gpiof = dp.GPIOF.split();
+    let _gpiof = dp.GPIOF.split();
 
     dp.IOMUX.remap().modify(|_r, w| {
         w.swjtag_mux().swd();

@@ -1,4 +1,4 @@
-use core::{convert::Infallible, ops::Deref};
+use core::convert::Infallible;
 
 use at32f4xx_hal::timer::PwmChannel;
 use at32f4xx_hal::{

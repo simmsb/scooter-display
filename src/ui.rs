@@ -2,24 +2,23 @@ use buoyant::{
     app::Harness as _,
     event::Event,
     focus::Role,
-    render::{AnimatedJoin as _, AnimationDomain, Render},
+    render::Render,
     render_target::{EmbeddedGraphicsRenderTarget, RenderTarget},
     view::ViewLayout,
 };
-use embassy_time::{Duration, Instant, Ticker, Timer};
-use embedded_graphics::{pixelcolor::Rgb565, prelude::RgbColor};
+use embassy_time::{Duration, Instant, Timer};
 
-use self::state::{Page, PageAction, State};
+use self::state::{Page, State};
 
 // TODO: display text rendering was much faster when it rendered to a buffer first.
 // We should add that back.
 
 #[embassy_executor::task]
-pub async fn ui(mut display: crate::display::Display) {
+pub async fn ui(display: crate::display::Display) {
     ui_(display).await;
 }
 
-const fn root_view_differ_size<V, T, S>(f: fn(T) -> V) -> usize
+const fn root_view_differ_size<V, T, S>(_f: fn(T) -> V) -> usize
 where
     V: ViewLayout<S>,
     V::Renderables: buoyant::render::Diffable,
@@ -85,7 +84,7 @@ async fn ui_(mut display: crate::display::Display) {
             defmt::trace!("Redrawing");
 
             // target.clear(Rgb565::RED);
-            let start = Instant::now();
+            let _start = Instant::now();
             app.render_animated_diffed(&mut target, &color::BACKGROUND, &mut diffing_mem);
             // defmt::debug!("Drawing took {}ms", start.elapsed().as_millis());
 
@@ -116,13 +115,11 @@ mod color {
 }
 
 mod view {
-    use core::time::Duration;
 
     use buoyant::{
         event::{Event, Key},
         focus::{self, FocusAction},
         match_view,
-        render::Capsule,
         view::prelude::*,
     };
 
@@ -163,7 +160,7 @@ mod view {
     }
 
     mod homescreen {
-        use buoyant::{match_view, view::prelude::*};
+        use buoyant::view::prelude::*;
 
         use crate::ui::{
             color::{self, ColorFormat},
@@ -200,7 +197,7 @@ mod view {
     }
 
     mod settings {
-        use buoyant::{match_view, view::prelude::*};
+        use buoyant::view::prelude::*;
 
         use crate::ui::{
             color::{self, ColorFormat},

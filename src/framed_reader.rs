@@ -1,5 +1,5 @@
 use deku::{no_std_io, writer::Writer};
-use embedded_io_async::{Error, Read};
+use embedded_io_async::Read;
 
 #[derive(defmt::Format)]
 pub enum ReadFramedError {

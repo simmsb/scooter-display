@@ -88,7 +88,7 @@ impl TmrDriver {
             T::reset_unchecked();
         }
 
-        r.ctrl1().modify(|r, w| w.tmren().disable());
+        r.ctrl1().modify(|_r, w| w.tmren().disable());
         r.cval().write(|w| w.set(0));
 
         let clk = T::timer_clock(clocks);

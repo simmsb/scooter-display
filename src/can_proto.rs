@@ -1,7 +1,3 @@
-use core::str::FromStr as _;
-
-use heapless::LenType;
-
 #[derive(defmt::Format, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CanId {
     // Controller -> display

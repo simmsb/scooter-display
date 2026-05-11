@@ -3,17 +3,11 @@
 // - tx: GPIOC 12 (0x1000) (`UART5_TX`)
 // - 9600 baud
 
-use at32f4xx_hal::{
-    pac::UART5,
-    uart::Serial5,
-    uart::{Rx, Tx},
-};
+use at32f4xx_hal::uart::Serial5;
 use deku::DekuContainerRead as _;
 use embassy_executor::Spawner;
-use embassy_sync::{blocking_mutex, watch::Watch, zerocopy_channel};
-use embassy_time::{Duration, Ticker};
-use embedded_io_async::{Read as _, Write as _};
-use static_cell::StaticCell;
+use embassy_sync::{blocking_mutex, watch::Watch};
+use embedded_io_async::Read as _;
 
 use crate::buttons_proto::{self, ButtonParser};
 
