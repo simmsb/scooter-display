@@ -69,7 +69,7 @@ mod test {
         .to_slice(&mut tmp)
         .unwrap();
 
-        assert_eq!(tmp, [3, 1]);
+        assert_eq!(tmp, [6, 1]);
 
         let serialized = &[0b0000_0011, 0b000000001];
 
@@ -80,9 +80,9 @@ mod test {
             ButtonParser {
                 confirm_pressed: true,
                 up_pressed: true,
-                down_pressed: false,
+                down_pressed: true,
                 l_pressed: false,
-                r_pressed: true,
+                r_pressed: false,
                 r_blink: false,
                 l_blink: false,
             }

@@ -15,6 +15,8 @@ pub mod can;
 #[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod display;
 #[cfg(all(target_arch = "arm", target_os = "none"))]
+pub mod state;
+#[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod time_driver;
 #[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod ui;
@@ -23,4 +25,3 @@ pub mod bluetooth_proto;
 pub mod buttons_proto;
 pub mod can_proto;
 pub mod framed_reader;
-pub mod state;
