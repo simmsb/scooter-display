@@ -1,4 +1,7 @@
-use crate::can_proto::*;
+use crate::{
+    adc::{AmbientLight, Throttle},
+    can_proto::*,
+};
 
 static STATE_UPDATES: embassy_sync::watch::Watch<
     embassy_sync::blocking_mutex::raw::ThreadModeRawMutex,
@@ -15,10 +18,8 @@ pub fn read_state<T>(f: impl for<'a> FnOnce(&'a SystemState) -> T) -> T {
     STATE.lock(f)
 }
 
-fn update_state(f: impl for<'a> FnOnce(&'a mut SystemState)) {
-    unsafe {
-        STATE.lock_mut(f);
-    }
+fn update_state<T>(f: impl for<'a> FnOnce(&'a mut SystemState) -> T) -> T {
+    unsafe { STATE.lock_mut(f) }
 }
 
 pub static CAN_MESSAGES: embassy_sync::channel::Channel<
@@ -30,6 +31,12 @@ pub static CAN_MESSAGES: embassy_sync::channel::Channel<
 pub static BT_COMMANDS: embassy_sync::channel::Channel<
     embassy_sync::blocking_mutex::raw::ThreadModeRawMutex,
     (),
+    1,
+> = embassy_sync::channel::Channel::new();
+
+pub static ADC_READINGS: embassy_sync::channel::Channel<
+    embassy_sync::blocking_mutex::raw::ThreadModeRawMutex,
+    crate::adc::AdcReading,
     1,
 > = embassy_sync::channel::Channel::new();
 
@@ -84,6 +91,9 @@ pub struct SystemState {
     pub battery_debug: BatteryDebug,
     pub battery_info: BatteryInfo,
 
+    pub throttle: Throttle,
+    pub ambient_light: AmbientLight,
+
     pub charges: [Option<BatteryChargeEntry>; 16],
 }
 
@@ -117,8 +127,29 @@ impl SystemState {
             charged: false,
             temperature: 0,
         },
+        throttle: Throttle::INITIAL,
+        ambient_light: AmbientLight::INITIAL,
         charges: [const { None }; _],
     };
+
+    fn update_from_adc_reading(&mut self, reading: crate::adc::AdcReading) -> bool {
+        match reading {
+            crate::adc::AdcReading::Throttle(throttle) => {
+                if self.throttle != throttle {
+                    self.throttle = throttle;
+                    return true;
+                }
+            }
+            crate::adc::AdcReading::AmbientLight(ambient_light) => {
+                if self.ambient_light != ambient_light {
+                    self.ambient_light = ambient_light;
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
 }
 
 #[embassy_executor::task]
@@ -129,17 +160,30 @@ pub async fn system_state_updater() {
 async fn system_state_updater_() {
     let can_messages = CAN_MESSAGES.receiver();
     let bt_commands = BT_COMMANDS.receiver();
+    let adc_readings = ADC_READINGS.receiver();
     let state_updated = STATE_UPDATES.sender();
 
     loop {
-        match embassy_futures::select::select(can_messages.receive(), bt_commands.receive()).await {
-            embassy_futures::select::Either::First(can_msg) => {
+        let updated = match embassy_futures::select::select3(
+            can_messages.receive(),
+            bt_commands.receive(),
+            adc_readings.receive(),
+        )
+        .await
+        {
+            embassy_futures::select::Either3::First(can_msg) => {
                 update_state(|s| s.update_from_can_message(&can_msg));
+                true
             }
-            embassy_futures::select::Either::Second(_) => {}
-        }
+            embassy_futures::select::Either3::Second(_) => false,
+            embassy_futures::select::Either3::Third(reading) => {
+                update_state(|s| s.update_from_adc_reading(reading))
+            }
+        };
 
-        state_updated.send(());
+        if updated {
+            state_updated.send(());
+        }
     }
 }
 

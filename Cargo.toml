@@ -15,9 +15,9 @@ test = false
 at32f4xx-hal = { git = "https://github.com/simmsb/at32f4xx-hal", features = ["at32f415", "defmt"], optional = true }
 cortex-m-rt = { version = "0.7.5", features = ["set-sp", "set-vtor"], optional = true }
 # defmt-rtt = { version = "1.1.0", features = ["disable-blocking-mode"] }
-defmt-rtt = { version = "1.1.0", features = [] }
+defmt-rtt = { version = "1.2.0", features = [] }
 panic-probe = { version = "1.0.0", features = ["defmt", "print-defmt"], optional = true }
-defmt = "1.0.1"
+defmt = "1.1.0"
 cortex-m = { version = "0.7.7", features = ["inline-asm", "linker-plugin-lto", "critical-section-single-core"], optional = true }
 mipidsi = "0.10.0"
 embedded-graphics = "0.8.2"
@@ -40,6 +40,7 @@ crc = "3.4.0"
 deku = { version = "0.20.3", default-features = false, features = ["bits"] }
 embassy-futures = "0.1.2"
 chrono = { version = "0.4.44", default-features = false, features = ["defmt"] }
+no-std-moving-average = "0.3.0"
 
 [features]
 test = ["deku/descriptive-errors"]

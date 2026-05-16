@@ -1,8 +1,6 @@
 #[derive(deku::DekuRead, deku::DekuWrite, Copy, Clone, Debug, PartialEq)]
+#[deku(bit_order = "lsb")]
 pub struct ButtonParser {
-    #[deku(pad_bits_before = "4", bits = 1)]
-    pub l_pressed: bool,
-
     #[deku(bits = 1)]
     pub down_pressed: bool,
 
@@ -10,32 +8,43 @@ pub struct ButtonParser {
     pub up_pressed: bool,
 
     #[deku(bits = 1)]
-    pub confirm_pressed: bool,
-
-    #[deku(pad_bits_before = "7", bits = 1)]
     pub r_pressed: bool,
-}
 
-impl ButtonParser {
-    pub fn as_buttons(self) -> Buttons {
-        let mut b = Buttons::empty();
-        b.set(Buttons::CONFIRM, self.confirm_pressed);
-        b.set(Buttons::UP, self.up_pressed);
-        b.set(Buttons::DOWN, self.down_pressed);
-        b.set(Buttons::L, self.l_pressed);
-        b.set(Buttons::R, self.r_pressed);
-        b
-    }
+    #[deku(bits = 1)]
+    pub l_pressed: bool,
+
+    #[deku(bits = 1)]
+    pub r_blink: bool,
+
+    #[deku(pad_bits_after = "2", bits = 1)]
+    pub l_blink: bool,
+
+    #[deku(pad_bits_after = "7", bits = 1)]
+    pub confirm_pressed: bool,
 }
 
 defmt::bitflags! {
     pub struct Buttons: u8 {
-        const CONFIRM = 0b00000001;
-        const UP      = 0b00000010;
-        const DOWN    = 0b00000100;
-        const L       = 0b00001000;
-        const R       = 0b00010000;
-        const MAIN    = 0b00100000;
+        const CONFIRM = 1 << 0;
+        const UP      = 1 << 1;
+        const DOWN    = 1 << 2;
+        const L       = 1 << 3;
+        const R       = 1 << 4;
+        const L_BLINK = 1 << 5;
+        const R_BLINK = 1 << 6;
+        const POWER   = 1 << 7;
+    }
+}
+
+impl Buttons {
+    pub fn update_from_uart(&mut self, parsed: ButtonParser) {
+        self.set(Buttons::CONFIRM, parsed.confirm_pressed);
+        self.set(Buttons::UP, parsed.up_pressed);
+        self.set(Buttons::DOWN, parsed.down_pressed);
+        self.set(Buttons::L, parsed.l_pressed);
+        self.set(Buttons::R, parsed.r_pressed);
+        self.set(Buttons::L_BLINK, parsed.l_blink);
+        self.set(Buttons::R_BLINK, parsed.r_blink);
     }
 }
 
@@ -54,6 +63,8 @@ mod test {
             down_pressed: false,
             l_pressed: false,
             r_pressed: true,
+            r_blink: false,
+            l_blink: false,
         }
         .to_slice(&mut tmp)
         .unwrap();
@@ -71,7 +82,9 @@ mod test {
                 up_pressed: true,
                 down_pressed: false,
                 l_pressed: false,
-                r_pressed: true
+                r_pressed: true,
+                r_blink: false,
+                l_blink: false,
             }
         )
     }

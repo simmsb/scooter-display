@@ -9,7 +9,9 @@ use panic_probe as _;
 
 use at32f4xx_hal::{
     self as hal,
+    adc::{Adc, config::AdcConfig},
     crm::{Clocks, Enable, Reset},
+    exti::{ExtiExt as _, ExtiInput},
     gpio::{GpioBusExt as _, PinSpeed as _, Speed},
     pac::Peripherals,
     prelude::*,
@@ -26,7 +28,7 @@ use embedded_graphics::prelude::*;
 use defmt_rtt as _;
 use static_cell::StaticCell;
 
-use scooter_display::{bluetooth, buttons, can, display, state, time_driver, ui};
+use scooter_display::{adc, bluetooth, buttons, can, display, state, time_driver, ui};
 
 #[embassy_executor::task]
 async fn async_main(spawner: Spawner, dp: Peripherals, cp: cortex_m::Peripherals, clocks: Clocks) {
@@ -53,6 +55,8 @@ async fn async_main_(
     let gpioc = dp.GPIOC.split();
     let gpiod = dp.GPIOD.split();
     let _gpiof = dp.GPIOF.split();
+
+    let exti = dp.EXINT.split();
 
     dp.IOMUX.remap().modify(|_r, w| {
         w.swjtag_mux().swd();
@@ -97,6 +101,9 @@ async fn async_main_(
     // info!("icache: {}, dcache: {}", icache_enabled, dcache_enabled);
 
     let mut delay = Timer::syst(cp.SYST, &clocks).delay();
+
+    let mut system_power = gpioa.pa8.into_push_pull_output();
+    system_power.set_high();
 
     let backlight_pwm_pin = gpioa.pa15.into_alternate().speed(Speed::High);
     let mut backlight_pwm = dp
@@ -162,14 +169,22 @@ async fn async_main_(
         &clocks,
     )
     .unwrap();
+    let power_button = ExtiInput::new(gpioa.pa1.into_input().internal_pull_up(true), exti.ch1);
+
+    let adc_config = AdcConfig::default();
+    let adc = Adc::adc1(dp.ADC1, true, adc_config);
+
+    let adc_ch12 = gpioc.pc2.into_analog();
+    let adc_ch13 = gpioc.pc3.into_analog();
+    let adc_ch15 = gpioc.pc5.into_analog();
 
     bluetooth::start_bluetooth(spawner, usart2);
-    buttons::start_buttons(spawner, uart5);
+    buttons::start_buttons(spawner, uart5, power_button);
+    can::start_can(spawner, can_tx, can_rx);
 
-    spawner.spawn(can::can_rx(can_rx).unwrap());
-    spawner.spawn(can::can_tx(can_tx).unwrap());
     spawner.spawn(ui::ui(display).unwrap());
     spawner.spawn(state::system_state_updater().unwrap());
+    spawner.spawn(adc::adc_task(adc, adc_ch12, adc_ch13, adc_ch15).unwrap());
 
     loop {
         defmt::debug!("Tick");

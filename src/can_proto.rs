@@ -1,3 +1,5 @@
+use deku::{DekuContainerWrite as _, DekuSize};
+
 #[derive(defmt::Format, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CanId {
     // Controller -> display
@@ -27,6 +29,24 @@ pub enum CanId {
     BatteryStateOfHealth = 1027,
     BatteryCapacityTemp = 1028,
     BatteryChargeHistory = 1863,
+}
+
+// this is a bit wonky, but CAN IDs don't alias, just some are extended...
+impl CanId {
+    pub fn to_standard_raw(self) -> u16 {
+        self as u16
+    }
+
+    pub fn to_extended_raw(self) -> u32 {
+        self as u32
+    }
+
+    pub fn is_extended(self) -> bool {
+        match self {
+            Self::DisplayChargeHistoryRequest => true,
+            _ => false,
+        }
+    }
 }
 
 pub trait CanValue {
@@ -84,6 +104,7 @@ impl OffsetU8 {
         Ok(value.saturating_add_signed(offset))
     }
 
+    #[allow(unused)]
     fn write<W: deku::no_std_io::Write + deku::no_std_io::Seek>(
         writer: &mut deku::writer::Writer<W>,
         value: u8,
@@ -151,6 +172,42 @@ pub struct ControllerSpeedLimit {
 impl CanValue for ControllerSpeedLimit {
     fn can_id() -> CanId {
         CanId::ControllerSpeedLimit
+    }
+}
+
+pub enum Sent {
+    DisplaySpeedMode(DisplaySpeedMode),
+    DisplayThrottle(DisplayThrottle),
+    DisplayChargeHistoryRequest(DisplayChargeHistoryRequest),
+}
+
+impl Sent {
+    pub fn can_id(&self) -> CanId {
+        match self {
+            Sent::DisplaySpeedMode(_) => DisplaySpeedMode::can_id(),
+            Sent::DisplayThrottle(_) => DisplayThrottle::can_id(),
+            Sent::DisplayChargeHistoryRequest(_) => DisplayChargeHistoryRequest::can_id(),
+        }
+    }
+
+    pub fn serialise<'buf>(&self, buf: &'buf mut [u8; 8]) -> &'buf [u8] {
+        match self {
+            Sent::DisplaySpeedMode(display_speed_mode) => {
+                let buf = &mut buf[0..DisplaySpeedMode::SIZE_BYTES.unwrap()];
+                display_speed_mode.to_slice(buf).unwrap();
+                buf
+            }
+            Sent::DisplayThrottle(display_throttle) => {
+                let buf = &mut buf[0..DisplayThrottle::SIZE_BYTES.unwrap()];
+                display_throttle.to_slice(buf).unwrap();
+                buf
+            }
+            Sent::DisplayChargeHistoryRequest(display_charge_history_request) => {
+                let buf = &mut buf[0..DisplayChargeHistoryRequest::SIZE_BYTES.unwrap()];
+                display_charge_history_request.to_slice(buf).unwrap();
+                buf
+            }
+        }
     }
 }
 
@@ -475,7 +532,7 @@ pub enum CanMessage {
 
 impl CanMessage {
     /// Try to decode a raw CAN frame into a typed message.
-    pub fn from_can_frame(can_id: u16, data: &[u8]) -> Option<Self> {
+    pub fn from_can_frame(can_id: u32, data: &[u8]) -> Option<Self> {
         use deku::DekuContainerRead as _;
         match can_id {
             512 => ControllerStatus::from_bytes((data, 0))
@@ -518,6 +575,14 @@ impl CanMessage {
                 .ok()
                 .map(|(_, x)| x)
                 .map(CanMessage::BatteryCapacityTemp),
+            1863 if data.len() == 8 => BatteryChargeHistoryEntry::from_bytes((data, 0))
+                .ok()
+                .map(|(_, x)| x)
+                .map(CanMessage::BatteryChargeHistoryEntry),
+            1863 if data.len() == 4 => BatteryChargeHistoryCharge::from_bytes((data, 0))
+                .ok()
+                .map(|(_, x)| x)
+                .map(CanMessage::BatteryChargeHistoryCharge),
             _ => None,
         }
     }

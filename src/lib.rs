@@ -2,7 +2,10 @@
 #![allow(nonstandard_style)]
 #![allow(incomplete_features)]
 #![feature(adt_const_params, unsized_const_params)]
+#![feature(integer_widen_truncate)]
 
+#[cfg(all(target_arch = "arm", target_os = "none"))]
+pub mod adc;
 #[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod bluetooth;
 #[cfg(all(target_arch = "arm", target_os = "none"))]
