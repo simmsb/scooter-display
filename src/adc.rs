@@ -7,6 +7,19 @@ use embassy_futures::select::{Either3, select3};
 use embassy_time::Duration;
 use no_std_moving_average::MovingAverage;
 
+pub static ADC_READINGS: embassy_sync::watch::Watch<
+    embassy_sync::blocking_mutex::raw::ThreadModeRawMutex,
+    AdcReading,
+    4,
+> = embassy_sync::watch::Watch::new();
+
+pub static THROTTLE_READINGS: embassy_sync::watch::Watch<
+    embassy_sync::blocking_mutex::raw::ThreadModeRawMutex,
+    Throttle,
+    4,
+> = embassy_sync::watch::Watch::new();
+
+#[derive(Clone, Copy)]
 pub enum AdcReading {
     Throttle(Throttle),
     AmbientLight(AmbientLight),
@@ -79,7 +92,8 @@ async fn adc_task_(
     let mut sample_throttle_ticker = embassy_time::Ticker::every(Duration::from_millis(100));
     let mut sample_ch15_ticker = embassy_time::Ticker::every(Duration::from_secs(1));
 
-    let state_reading_ch = crate::state::ADC_READINGS.sender();
+    let state_reading_ch = ADC_READINGS.sender();
+    let throttle_reading_ch = THROTTLE_READINGS.sender();
 
     let mut throttle_averager = MovingAverage::<u16, u32, 4>::new();
     let mut ambient_light_averager = MovingAverage::<u16, u32, 16>::new();
@@ -95,16 +109,14 @@ async fn adc_task_(
             Either3::First(_) => {
                 let val = adc.convert(&ch12, SampleTime::Cycles_480).await;
                 let avg = ambient_light_averager.average(val);
-                state_reading_ch
-                    .send(AdcReading::AmbientLight(AmbientLight::from_raw(avg)))
-                    .await;
+                state_reading_ch.send(AdcReading::AmbientLight(AmbientLight::from_raw(avg)));
             }
             Either3::Second(_) => {
                 let val = adc.convert(&ch13, SampleTime::Cycles_480).await;
                 let avg = throttle_averager.average(val);
-                state_reading_ch
-                    .send(AdcReading::Throttle(Throttle::from_raw(avg)))
-                    .await;
+                let thr = Throttle::from_raw(avg);
+                state_reading_ch.send(AdcReading::Throttle(thr));
+                throttle_reading_ch.send(thr);
             }
             Either3::Third(_) => {
                 let _val = adc.convert(&ch15, SampleTime::Cycles_480).await;

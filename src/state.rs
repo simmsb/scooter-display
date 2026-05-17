@@ -1,5 +1,9 @@
+use embassy_futures::select;
+
 use crate::{
     adc::{AmbientLight, Throttle},
+    buttons::BUTTON_STATE_WATCH,
+    buttons_proto::Buttons,
     can_proto::*,
 };
 
@@ -34,32 +38,26 @@ pub static BT_COMMANDS: embassy_sync::channel::Channel<
     1,
 > = embassy_sync::channel::Channel::new();
 
-pub static ADC_READINGS: embassy_sync::channel::Channel<
-    embassy_sync::blocking_mutex::raw::ThreadModeRawMutex,
-    crate::adc::AdcReading,
-    1,
-> = embassy_sync::channel::Channel::new();
-
-#[derive(PartialEq, Eq, defmt::Format, Default)]
+#[derive(PartialEq, Eq, defmt::Format)]
 pub struct BatteryLevel {
     from_controller: u8,
     from_battery: u8,
 }
 
-#[derive(PartialEq, Eq, defmt::Format, Default)]
+#[derive(PartialEq, Eq, defmt::Format)]
 pub struct SystemVoltage {
     from_controller: u16,
     from_battery: u32,
 }
 
-#[derive(PartialEq, Eq, defmt::Format, Default)]
+#[derive(PartialEq, Eq, defmt::Format)]
 pub struct BatteryDebug {
     command: u16,
     state: u16,
     estimated_range: u32,
 }
 
-#[derive(PartialEq, Eq, defmt::Format, Default)]
+#[derive(PartialEq, Eq, defmt::Format)]
 pub struct BatteryInfo {
     relative_soc: u32,
     absolute_soc: u32,
@@ -76,7 +74,7 @@ pub struct BatteryChargeEntry {
     charge: u16,
 }
 
-#[derive(PartialEq, Eq, defmt::Format, Default)]
+#[derive(PartialEq, Eq, defmt::Format)]
 pub struct SystemState {
     pub motor_speed: u16,
     pub headlight_on: bool,
@@ -93,6 +91,8 @@ pub struct SystemState {
 
     pub throttle: Throttle,
     pub ambient_light: AmbientLight,
+
+    pub buttons: Buttons,
 
     pub charges: [Option<BatteryChargeEntry>; 16],
 }
@@ -129,6 +129,8 @@ impl SystemState {
         },
         throttle: Throttle::INITIAL,
         ambient_light: AmbientLight::INITIAL,
+        buttons: Buttons::empty(),
+
         charges: [const { None }; _],
     };
 
@@ -160,24 +162,28 @@ pub async fn system_state_updater() {
 async fn system_state_updater_() {
     let can_messages = CAN_MESSAGES.receiver();
     let bt_commands = BT_COMMANDS.receiver();
-    let adc_readings = ADC_READINGS.receiver();
+    let mut adc_readings = crate::adc::ADC_READINGS.receiver().unwrap();
     let state_updated = STATE_UPDATES.sender();
+    let mut buttons_reader = BUTTON_STATE_WATCH.receiver().unwrap();
 
     loop {
-        let updated = match embassy_futures::select::select3(
+        let updated = match select::select4(
             can_messages.receive(),
             bt_commands.receive(),
-            adc_readings.receive(),
+            adc_readings.changed(),
+            buttons_reader.changed(),
         )
         .await
         {
-            embassy_futures::select::Either3::First(can_msg) => {
+            select::Either4::First(can_msg) => {
                 update_state(|s| s.update_from_can_message(&can_msg));
                 true
             }
-            embassy_futures::select::Either3::Second(_) => false,
-            embassy_futures::select::Either3::Third(reading) => {
-                update_state(|s| s.update_from_adc_reading(reading))
+            select::Either4::Second(_) => false,
+            select::Either4::Third(reading) => update_state(|s| s.update_from_adc_reading(reading)),
+            select::Either4::Fourth(buttons) => {
+                update_state(|s| s.buttons = buttons);
+                true
             }
         };
 

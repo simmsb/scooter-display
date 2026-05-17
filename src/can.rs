@@ -62,11 +62,11 @@ async fn can_rx_(mut rx: CanRx<'static>) {
         };
 
         let Some(parsed) = can_proto::CanMessage::from_can_frame(id, msg.frame.data()) else {
-            defmt::info!("Unhandled CAN id: {}", id);
+            defmt::debug!("Unhandled CAN id ({}): {}", id, msg.frame.data());
             continue;
         };
 
-        defmt::info!("Can RX: {}", parsed);
+        defmt::trace!("Can RX: {}", parsed);
 
         state_can_ch.send(parsed).await;
     }
@@ -94,7 +94,7 @@ async fn can_tx_(mut tx: CanTx<'static>) {
             Frame::new_standard(to_send.can_id().to_standard_raw(), buf).unwrap()
         };
 
-        defmt::info!("Can TX ({}): {}", to_send.can_id(), buf);
+        defmt::debug!("Can TX ({}): {}", to_send.can_id(), buf);
 
         let _txstatus = tx.write(&frame).await;
     }
@@ -111,7 +111,7 @@ async fn can_periodic_() {
     let can_tx = CAN_TX_BUS.sender();
 
     let mut request_battery_charge_history_ticker =
-        embassy_time::Ticker::every(Duration::from_secs(10));
+        embassy_time::Ticker::every(Duration::from_secs(60));
 
     // just so we have the code structure for N tickers
     let mut todo_ticker = embassy_time::Ticker::every(Duration::from_secs(10000));

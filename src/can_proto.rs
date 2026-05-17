@@ -211,6 +211,18 @@ impl Sent {
     }
 }
 
+#[derive(deku::DekuWrite, deku::DekuSize, defmt::Format, Clone, Copy, PartialEq, Eq, Debug)]
+#[cfg_attr(test, derive(deku::DekuRead))]
+#[deku(id_type = "u32", bytes = 3, endian = "big")]
+pub enum DisplaySpeedModeMagic {
+    #[deku(id = 0x5a6400)]
+    Normal,
+
+    /// Sending this triggers a controller shutdown
+    #[deku(id = 0xa56400)]
+    Shutdown,
+}
+
 // 768
 #[derive(deku::DekuWrite, deku::DekuSize, defmt::Format, Clone, Copy, PartialEq, Eq, Debug)]
 #[cfg_attr(test, derive(deku::DekuRead))]
@@ -222,14 +234,36 @@ pub struct DisplaySpeedMode {
     pub mode_high: u8,
     /// Headlight: 0x64 = on, 0 = off
     pub headlight: u8,
-    #[deku(magic = b"\x5a\x64\x00")]
+    pub magic: DisplaySpeedModeMagic,
     pub speed_mode_byte: u8,
     /// Walk mode counter (counts to 0xf)
     pub walk_counter: u8,
 }
 
 impl DisplaySpeedMode {
-    pub fn new(mode: SpeedMode, headlight: bool) -> Self {
+    pub const fn immobile(counter: u8) -> Self {
+        Self {
+            mode: 0,
+            mode_high: 0x5a,
+            headlight: 0,
+            magic: DisplaySpeedModeMagic::Normal,
+            speed_mode_byte: 0x64,
+            walk_counter: counter,
+        }
+    }
+
+    pub const fn shutdown() -> Self {
+        Self {
+            mode: 0,
+            mode_high: 0x5a,
+            headlight: 0,
+            magic: DisplaySpeedModeMagic::Shutdown,
+            speed_mode_byte: 0x64,
+            walk_counter: 0,
+        }
+    }
+
+    pub const fn new(mode: SpeedMode, headlight: bool) -> Self {
         let (mode_byte, mode_high, speed_mode_byte) = match mode {
             SpeedMode::Walk => (0x00, 0xa5, 0x00),
             SpeedMode::Eco => (0x01, 0x5a, 0x1e),
@@ -240,17 +274,18 @@ impl DisplaySpeedMode {
             mode: mode_byte,
             mode_high,
             headlight: if headlight { 0x64 } else { 0x00 },
+            magic: DisplaySpeedModeMagic::Normal,
             speed_mode_byte,
             walk_counter: 0,
         }
     }
 
-    pub fn with_custom_speed_mode(mut self, speed_mode: u8) -> Self {
+    pub const fn with_custom_speed_mode(mut self, speed_mode: u8) -> Self {
         self.mode = speed_mode;
         self
     }
 
-    pub fn with_walk_counter(mut self, counter: u8) -> Self {
+    pub const fn with_walk_counter(mut self, counter: u8) -> Self {
         self.walk_counter = counter;
         self
     }
@@ -609,11 +644,6 @@ impl CanMessage {
 mod test {
     use super::*;
 
-    use deku::DekuContainerRead;
-    use deku::DekuWriter;
-    use deku::ctx::Order;
-    use deku::no_std_io::Cursor;
-
     pub fn deser_roundtrip<
         T: deku::DekuSize
             + for<'a> TryFrom<&'a [u8], Error = E>
@@ -721,6 +751,12 @@ mod test {
             &DisplaySpeedMode::new(SpeedMode::Walk, false).with_walk_counter(2),
         );
         assert_eq!(buf, [0x00, 0xa5, 0x00, 0x5a, 0x64, 0, 0, 2]);
+
+        deser_roundtrip(&mut buf, &DisplaySpeedMode::immobile(4));
+        assert_eq!(buf, [0x00, 0x5a, 0x00, 0x5a, 0x64, 0, 0x64, 4]);
+
+        deser_roundtrip(&mut buf, &DisplaySpeedMode::shutdown());
+        assert_eq!(buf, [0x00, 0x5a, 0x00, 0xa5, 0x64, 0, 0x64, 0]);
     }
 
     #[test]

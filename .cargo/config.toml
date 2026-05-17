@@ -10,8 +10,8 @@ rustflags = [
   # See https://github.com/rust-embedded/cortex-m-quickstart/pull/95
   "-C", "link-arg=--nmagic",
   "-C", "linker-plugin-lto",
-  "-C", "force-frame-pointers=yes",
-  "-C", "force-unwind-tables=yes",
+  # "-C", "force-frame-pointers=yes",
+  # "-C", "force-unwind-tables=yes",
 ]
 
 [build]

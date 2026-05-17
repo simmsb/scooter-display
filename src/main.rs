@@ -1,10 +1,10 @@
 #![no_std]
 #![no_main]
 
-// extern crate alloc;
-
 use defmt::info;
 use embassy_executor::Spawner;
+
+#[cfg(feature = "panic-probe")]
 use panic_probe as _;
 
 use at32f4xx_hal::{
@@ -28,7 +28,20 @@ use embedded_graphics::prelude::*;
 use defmt_rtt as _;
 use static_cell::StaticCell;
 
-use scooter_display::{adc, bluetooth, buttons, can, display, state, time_driver, ui};
+use scooter_display::{adc, bluetooth, buttons, can, display, operation, state, time_driver, ui};
+
+#[cfg(feature = "panic-scram")]
+#[inline(never)]
+#[panic_handler]
+fn panic(_info: &core::panic::PanicInfo) -> ! {
+    scooter_display::scram::scram();
+}
+
+#[cfg(feature = "panic-scram")]
+#[cortex_m_rt::exception(trampoline = true)]
+unsafe fn HardFault(_frame: &cortex_m_rt::ExceptionFrame) -> ! {
+    scooter_display::scram::scram();
+}
 
 #[embassy_executor::task]
 async fn async_main(spawner: Spawner, dp: Peripherals, cp: cortex_m::Peripherals, clocks: Clocks) {
@@ -185,6 +198,7 @@ async fn async_main_(
     spawner.spawn(ui::ui(display).unwrap());
     spawner.spawn(state::system_state_updater().unwrap());
     spawner.spawn(adc::adc_task(adc, adc_ch12, adc_ch13, adc_ch15).unwrap());
+    spawner.spawn(operation::operation_task().unwrap());
 
     loop {
         defmt::debug!("Tick");

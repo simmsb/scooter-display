@@ -2,7 +2,8 @@
 #![allow(nonstandard_style)]
 #![allow(incomplete_features)]
 #![feature(adt_const_params, unsized_const_params)]
-#![feature(integer_widen_truncate)]
+#![cfg_attr(not(test), feature(integer_widen_truncate))]
+#![feature(mem_conjure_zst)]
 
 #[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod adc;
@@ -15,11 +16,15 @@ pub mod can;
 #[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod display;
 #[cfg(all(target_arch = "arm", target_os = "none"))]
+pub mod operation;
+#[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod state;
 #[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod time_driver;
 #[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod ui;
+#[cfg(all(target_arch = "arm", target_os = "none"))]
+pub mod scram;
 
 pub mod bluetooth_proto;
 pub mod buttons_proto;

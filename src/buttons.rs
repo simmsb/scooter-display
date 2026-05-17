@@ -13,7 +13,7 @@ use embedded_io_async::Read as _;
 
 use crate::buttons_proto::{self, ButtonParser, Buttons};
 
-static BUTTON_STATE_WATCH: Watch<
+pub static BUTTON_STATE_WATCH: Watch<
     blocking_mutex::raw::ThreadModeRawMutex,
     buttons_proto::Buttons,
     4,

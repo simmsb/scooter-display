@@ -41,11 +41,16 @@ deku = { version = "0.20.3", default-features = false, features = ["bits"] }
 embassy-futures = "0.1.2"
 chrono = { version = "0.4.44", default-features = false, features = ["defmt"] }
 no-std-moving-average = "0.3.0"
+panic-reset = { version = "0.1.1", optional = true }
 
 [features]
 test = ["deku/descriptive-errors"]
-app = ["dep:cortex-m-rt", "dep:panic-probe", "dep:cortex-m", "dep:at32f4xx-hal"]
-default = ["app"]
+app = ["dep:cortex-m-rt", "dep:cortex-m", "dep:at32f4xx-hal"]
+default = ["app", "panic-probe"]
+panic-probe = ["dep:panic-probe"]
+
+# panic handler which sends immobiliser canbus messages and then resets.
+panic-scram = []
 
 [patch.crates-io]
 embassy-executor = { git = "https://github.com/embassy-rs/embassy" }
