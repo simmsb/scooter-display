@@ -127,6 +127,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "butt-head"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f4aa65c59ba6a56642f9ba79ce2164b5651db92648615d6ea6fbe313a3e48007"
+dependencies = [
+ "defmt 1.1.0",
+]
+
+[[package]]
 name = "bytemuck"
 version = "1.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1162,6 +1171,7 @@ version = "0.1.0"
 dependencies = [
  "at32f4xx-hal",
  "buoyant",
+ "butt-head",
  "chrono",
  "cortex-m",
  "cortex-m-rt",

@@ -62,7 +62,7 @@ async fn can_rx_(mut rx: CanRx<'static>) {
         };
 
         let Some(parsed) = can_proto::CanMessage::from_can_frame(id, msg.frame.data()) else {
-            defmt::debug!("Unhandled CAN id ({}): {}", id, msg.frame.data());
+            defmt::trace!("Unhandled CAN id ({}): {}", id, msg.frame.data());
             continue;
         };
 
@@ -94,7 +94,7 @@ async fn can_tx_(mut tx: CanTx<'static>) {
             Frame::new_standard(to_send.can_id().to_standard_raw(), buf).unwrap()
         };
 
-        defmt::debug!("Can TX ({}): {}", to_send.can_id(), buf);
+        defmt::trace!("Can TX ({}): {}", to_send.can_id(), buf);
 
         let _txstatus = tx.write(&frame).await;
     }

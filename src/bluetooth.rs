@@ -63,6 +63,7 @@ async fn bluetooth_rx_(
     >,
 ) {
     defmt::info!("bluetooth RX startup");
+
     loop {
         let mut buf = [0; 48];
 
@@ -98,7 +99,7 @@ async fn bluetooth_rx_(
             continue;
         };
 
-        defmt::debug!("Bluetooth RX: {} {}", command, buf);
+        defmt::trace!("Bluetooth RX: {} {}", command, buf);
 
         let mut slot = cmd_sender.send().await;
         *slot = command;
@@ -272,7 +273,7 @@ async fn bluetooth_tx_(
                 Ok(to_send) => to_send,
             };
 
-            defmt::debug!("BT Response: {} {}", resp, to_send);
+            defmt::trace!("BT Response: {} {}", resp, to_send);
 
             let _ = tx.write_all(to_send).await;
         }

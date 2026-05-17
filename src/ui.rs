@@ -1,17 +1,23 @@
 use buoyant::{
     app::Harness as _,
-    event::Event,
+    event::Key,
     focus::Role,
-    render::Render,
     render_target::{EmbeddedGraphicsRenderTarget, RenderTarget},
     view::ViewLayout,
 };
-use embassy_time::{Duration, Instant, Timer};
+use embassy_time::{Duration, Instant, Timer, WithTimeout};
 
-use self::state::{Page, State};
+use crate::{
+    buttons::{BHDuration, BHInstant, BUTTON_EVENTS, BUTTON_STATE_WATCH, Button},
+    buttons_proto::Buttons,
+};
 
-// TODO: display text rendering was much faster when it rendered to a buffer first.
-// We should add that back.
+use self::state::State;
+
+pub mod colour;
+pub mod font;
+pub mod state;
+pub mod view;
 
 #[embassy_executor::task]
 pub async fn ui(display: crate::display::Display) {
@@ -28,54 +34,103 @@ where
     V::Renderables::SIZE.div_ceil(8) + 1
 }
 
+/// buoyant uses keyboard-like key events, but we have a keypad with up/down/confirm/power.
+///
+/// We also want to make use of hold events.
+///
+/// So translate our click/hold events into arbitrary buoyant character presses.
+///
+/// UI views will use map_event to translate these into the correct focus action.
+mod keys {
+    use buoyant::event::Key;
+
+    pub const UP_CLICK: Key = Key::Character('0');
+    pub const UP_HOLD: Key = Key::Character('1');
+    pub const DOWN_CLICK: Key = Key::Character('2');
+    pub const DOWN_HOLD: Key = Key::Character('3');
+    pub const CONFIRM_CLICK: Key = Key::Character('4');
+    pub const CONFIRM_HOLD: Key = Key::Character('5');
+    pub const POWER_CLICK: Key = Key::Character('6');
+    pub const POWER_HOLD: Key = Key::Character('7');
+}
+
+fn map_event(
+    (button, evt): (Button, butt_head::Event<BHDuration, BHInstant>),
+) -> Option<(buoyant::event::Event, buoyant::event::Event)> {
+    let (key, key_hold) = match button {
+        Button::Up => (keys::UP_CLICK, keys::UP_HOLD),
+        Button::Down => (keys::DOWN_CLICK, keys::DOWN_HOLD),
+        Button::Confirm => (keys::CONFIRM_CLICK, keys::CONFIRM_HOLD),
+        Button::Power => (keys::POWER_CLICK, keys::POWER_HOLD),
+    };
+
+    match evt {
+        butt_head::Event::Press { .. } => None,
+        butt_head::Event::Release { .. } => None,
+        butt_head::Event::Click { .. } => Some((
+            buoyant::event::Event::KeyDown(key),
+            buoyant::event::Event::KeyUp(key),
+        )),
+        butt_head::Event::Hold { .. } => Some((
+            buoyant::event::Event::KeyDown(key_hold),
+            buoyant::event::Event::KeyUp(key_hold),
+        )),
+    }
+}
+
 async fn ui_(mut display: crate::display::Display) {
-    let mut target = EmbeddedGraphicsRenderTarget::new_hinted(&mut display, color::BACKGROUND);
+    let mut target = EmbeddedGraphicsRenderTarget::new_hinted(&mut display, colour::BACKGROUND);
 
     let app_start = Instant::now();
 
-    let mut app = buoyant::app::App::new(
-        State {
-            foo: 0,
-            page: Page::Settings,
-            page_action: None,
-        },
-        target.size(),
-        view::root_view,
-    )
-    .with_roles(Role::Button | Role::Container);
+    let mut app = buoyant::app::App::new(state::State::new(), target.size(), view::root_view)
+        .with_roles(Role::Button | Role::Container);
 
     app.focus_forward();
 
-    let mut last_changed = Instant::now();
-    let mut last_changed_foo = Instant::now();
-
-    target.clear(color::BACKGROUND);
+    target.clear(colour::BACKGROUND);
 
     let mut diffing_mem = [0u8; root_view_differ_size(view::root_view)];
 
+    let mut immediate_redraw = false;
+
+    let mut button_events = BUTTON_EVENTS.subscriber().unwrap();
+
     loop {
+        let event = if !immediate_redraw {
+            button_events
+                .next_message_pure()
+                .with_timeout(Duration::from_millis(33))
+                .await
+                .ok()
+        } else {
+            None
+        };
+
+        if let Some((a, b)) = event.and_then(map_event) {
+            app.send(a);
+            app.send(b);
+        }
+
+        while let Some(event) = button_events.try_next_message_pure() {
+            if let Some((a, b)) = map_event(event) {
+                app.send(a);
+                app.send(b);
+            }
+        }
+
         app.set_time(app_start.elapsed().into());
-
-        // Todo: events
-        if last_changed.elapsed() > Duration::from_secs(5) {
-            last_changed = Instant::now();
-
-            app.send(Event::KeyDown(buoyant::event::Key::UpArrow));
-        }
-
-        if last_changed_foo.elapsed() > Duration::from_secs(1) {
-            last_changed_foo = Instant::now();
-
-            app.state_mut().foo += 1;
-        }
 
         // Handle page changes
         if let Some(action) = app.state().page_action {
             let current_page = app.state().page;
             let new_page = current_page.handle_action(action);
             let mut state = app.state_mut();
-            state.page = new_page;
-            state.page_action = None;
+
+            if let Some(new_page) = new_page {
+                state.page = new_page;
+                state.page_action = None;
+            }
 
             defmt::trace!("Page: {}", state.page);
         }
@@ -85,36 +140,19 @@ async fn ui_(mut display: crate::display::Display) {
 
             // target.clear(Rgb565::RED);
             let _start = Instant::now();
-            app.render_animated_diffed(&mut target, &color::BACKGROUND, &mut diffing_mem);
+            // app.render_animated_diffed(&mut target, &colour::BACKGROUND, &mut diffing_mem);
+            app.render_animated(&mut target, &colour::BACKGROUND);
             // defmt::debug!("Drawing took {}ms", start.elapsed().as_millis());
 
-            // debug focus?
+            immediate_redraw = true;
         } else {
-            Timer::after_millis(33).await;
+            immediate_redraw = false;
         }
     }
 }
 
-mod color {
-    use embedded_graphics::prelude::RgbColor;
-
-    pub type ColorFormat = embedded_graphics::pixelcolor::Rgb565;
-
-    pub const GREEN: ColorFormat = ColorFormat::new(20, 200, 50);
-    pub const RED: ColorFormat = ColorFormat::new(255, 0, 0);
-    pub const YELLOW: ColorFormat = ColorFormat::new(255, 255, 0);
-    pub const BLUE: ColorFormat = ColorFormat::new(100, 210, 255);
-    pub const BLACK: ColorFormat = ColorFormat::new(0, 0, 0);
-    pub const GREY: ColorFormat = ColorFormat::new(150, 150, 150);
-    pub const WHITE: ColorFormat = ColorFormat::WHITE;
-
-    pub const BACKGROUND: ColorFormat = WHITE;
-    pub const SECONDARY_BACKGROUND: ColorFormat = ColorFormat::new(200, 200, 200);
-    pub const CONTENT: ColorFormat = BLACK;
-    pub const SECONDARY_CONTENT: ColorFormat = ColorFormat::new(50, 50, 50);
-}
-
-mod view {
+#[cfg(false)]
+mod view_aa {
 
     use buoyant::{
         event::{Event, Key},
@@ -128,7 +166,7 @@ mod view {
         state::{Page, PageAction},
     };
 
-    use super::{color::ColorFormat, state::State};
+    use super::{colour::ColorFormat, state::State};
 
     #[must_use]
     pub fn root_view(state: &State) -> impl View<ColorFormat, State> + use<> {
@@ -156,14 +194,14 @@ mod view {
             _ => Some(event.clone()),
         })
         .padding(Edges::All, 5)
-        .background_color(color::BACKGROUND, Rectangle)
+        .background_color(colour::BACKGROUND, Rectangle)
     }
 
     mod homescreen {
         use buoyant::view::prelude::*;
 
         use crate::ui::{
-            color::{self, ColorFormat},
+            colour::{self, ColorFormat},
             font,
             state::State,
         };
@@ -187,8 +225,8 @@ mod view {
             alignment: HorizontalAlignment,
         ) -> impl View<ColorFormat, S> + use<'a, S> {
             VStack::new((
-                Text::new(value, &font::B612_REGULAR).foreground_color(color::CONTENT),
-                Text::new(label, &font::B612_REGULAR).foreground_color(color::SECONDARY_CONTENT),
+                Text::new(value, &font::B612_REGULAR).foreground_color(colour::CONTENT),
+                Text::new(label, &font::B612_REGULAR).foreground_color(colour::SECONDARY_CONTENT),
             ))
             .with_alignment(alignment)
             .flex_infinite_width(alignment)
@@ -200,7 +238,7 @@ mod view {
         use buoyant::view::prelude::*;
 
         use crate::ui::{
-            color::{self, ColorFormat},
+            colour::{self, ColorFormat},
             font,
             state::State,
         };
@@ -210,86 +248,17 @@ mod view {
             VStack::new((
                 Text::new("Foo", &font::B612_REGULAR)
                     .multiline_text_alignment(HorizontalTextAlignment::Center)
-                    .foreground_color(color::CONTENT),
+                    .foreground_color(colour::CONTENT),
                 Text::new(
                     heapless::format!(8; "{}", state.foo).unwrap(),
                     &font::B612_REGULAR_LARGE_NUMBERS,
                 )
                 .multiline_text_alignment(HorizontalTextAlignment::Center)
-                .foreground_color(color::SECONDARY_CONTENT),
+                .foreground_color(colour::SECONDARY_CONTENT),
             ))
             .with_alignment(HorizontalAlignment::Center)
             .flex_infinite_width(HorizontalAlignment::Center)
             .with_infinite_max_height()
-        }
-    }
-}
-
-mod state {
-    #[derive(PartialEq, Eq, Clone, Copy, Default, defmt::Format)]
-    pub enum Page {
-        #[default]
-        Homescreen,
-        Settings,
-    }
-
-    impl Page {
-        pub fn handle_action(&self, action: PageAction) -> Self {
-            match (self, action) {
-                (Page::Homescreen, PageAction::Next) => Page::Settings,
-                (Page::Homescreen, PageAction::Prev) => Page::Settings,
-
-                (Page::Settings, PageAction::Next) => Page::Homescreen,
-                (Page::Settings, PageAction::Prev) => Page::Homescreen,
-            }
-        }
-    }
-
-    #[derive(PartialEq, Eq, Clone, Copy)]
-    pub enum PageAction {
-        Next,
-        Prev,
-    }
-
-    pub struct State {
-        pub foo: u32,
-        pub page: Page,
-        pub page_action: Option<PageAction>,
-    }
-}
-
-mod font {
-    // use u8g2_fonts::{
-    //     FontRenderer,
-    //     fonts,
-    // };
-
-    // pub static TITLE: FontRenderer = FontRenderer::new::<fonts::u8g2_font_eckpixel_tr>();
-    // pub static TITLE_BOLD: FontRenderer = FontRenderer::new::<fonts::u8g2_font_helvB18_tr>();
-    // pub static SUBTITLE: FontRenderer = FontRenderer::new::<fonts::u8g2_font_helvB14_tr>();
-    // pub static BODY: FontRenderer = FontRenderer::new::<fonts::u8g2_font_helvR12_tr>();
-    // pub static BODY_BOLD: FontRenderer = FontRenderer::new::<fonts::u8g2_font_helvB12_tr>();
-    // pub static FOOTNOTE: FontRenderer = FontRenderer::new::<fonts::u8g2_font_helvR08_tr>();
-
-    glyphr::generate_font! {
-        name: B612_REGULAR,
-        path: "B612-Regular.ttf",
-        size: 24,
-        characters: "0-9A-Za-z! /:,%",
-        format: Bitmap {
-            spread: 10.0,
-            padding: 0
-        }
-    }
-
-    glyphr::generate_font! {
-        name: B612_REGULAR_LARGE_NUMBERS,
-        path: "B612-Regular.ttf",
-        size: 36,
-        characters: "0-9",
-        format: Bitmap {
-            spread: 20.0,
-            padding: 0
         }
     }
 }

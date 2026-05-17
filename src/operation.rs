@@ -46,7 +46,7 @@ pub enum OperationCommand {
     SetHeadlightMode(HeadlightMode),
 }
 
-#[derive(PartialEq, Eq, defmt::Format)]
+#[derive(PartialEq, Eq, defmt::Format, Clone)]
 pub enum OperationState {
     Locked,
     Active(ActiveState),
@@ -70,7 +70,7 @@ impl OperationState {
     }
 }
 
-#[derive(PartialEq, Eq, defmt::Format)]
+#[derive(PartialEq, Eq, defmt::Format, Clone)]
 pub enum HeadlightMode {
     Auto {
         /// Headlight will switch on when ambient light reads under this
@@ -85,7 +85,7 @@ pub enum HeadlightMode {
     Off,
 }
 
-#[derive(PartialEq, Eq, defmt::Format)]
+#[derive(PartialEq, Eq, defmt::Format, Clone)]
 pub struct ActiveState {
     throttle: Throttle,
 

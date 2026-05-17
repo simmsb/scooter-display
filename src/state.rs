@@ -38,26 +38,26 @@ pub static BT_COMMANDS: embassy_sync::channel::Channel<
     1,
 > = embassy_sync::channel::Channel::new();
 
-#[derive(PartialEq, Eq, defmt::Format)]
+#[derive(PartialEq, Eq, defmt::Format, Clone)]
 pub struct BatteryLevel {
     from_controller: u8,
     from_battery: u8,
 }
 
-#[derive(PartialEq, Eq, defmt::Format)]
+#[derive(PartialEq, Eq, defmt::Format, Clone)]
 pub struct SystemVoltage {
     from_controller: u16,
     from_battery: u32,
 }
 
-#[derive(PartialEq, Eq, defmt::Format)]
+#[derive(PartialEq, Eq, defmt::Format, Clone)]
 pub struct BatteryDebug {
     command: u16,
     state: u16,
     estimated_range: u32,
 }
 
-#[derive(PartialEq, Eq, defmt::Format)]
+#[derive(PartialEq, Eq, defmt::Format, Clone)]
 pub struct BatteryInfo {
     relative_soc: u32,
     absolute_soc: u32,
@@ -68,13 +68,13 @@ pub struct BatteryInfo {
     temperature: i16,
 }
 
-#[derive(PartialEq, Eq, defmt::Format, Default)]
+#[derive(PartialEq, Eq, defmt::Format, Default, Clone)]
 pub struct BatteryChargeEntry {
     when: chrono::DateTime<chrono::Utc>,
     charge: u16,
 }
 
-#[derive(PartialEq, Eq, defmt::Format)]
+#[derive(PartialEq, Eq, defmt::Format, Clone)]
 pub struct SystemState {
     pub motor_speed: u16,
     pub headlight_on: bool,

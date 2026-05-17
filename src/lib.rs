@@ -18,13 +18,13 @@ pub mod display;
 #[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod operation;
 #[cfg(all(target_arch = "arm", target_os = "none"))]
+pub mod scram;
+#[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod state;
 #[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod time_driver;
 #[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod ui;
-#[cfg(all(target_arch = "arm", target_os = "none"))]
-pub mod scram;
 
 pub mod bluetooth_proto;
 pub mod buttons_proto;
