@@ -140,8 +140,8 @@ async fn ui_(mut display: crate::display::Display) {
 
             // target.clear(Rgb565::RED);
             let _start = Instant::now();
-            // app.render_animated_diffed(&mut target, &colour::BACKGROUND, &mut diffing_mem);
-            app.render_animated(&mut target, &colour::BACKGROUND);
+            app.render_animated_diffed(&mut target, &colour::BACKGROUND, &mut diffing_mem);
+            // app.render_animated(&mut target, &colour::BACKGROUND);
             // defmt::debug!("Drawing took {}ms", start.elapsed().as_millis());
 
             immediate_redraw = true;
