@@ -29,6 +29,12 @@ fn update_state<T>(f: impl for<'a> FnOnce(&'a mut OperationState) -> T) -> T {
     unsafe { STATE.lock_mut(f) }
 }
 
+pub static OPERATION_COMMANDS: embassy_sync::channel::Channel<
+    embassy_sync::blocking_mutex::raw::ThreadModeRawMutex,
+    OperationCommand,
+    1,
+> = embassy_sync::channel::Channel::new();
+
 static SPEED_MODE_COUNTER: AtomicU8 = AtomicU8::new(0);
 
 fn next_speed_mode_counter() -> u8 {
@@ -37,7 +43,7 @@ fn next_speed_mode_counter() -> u8 {
     next & 0xf
 }
 
-#[derive(PartialEq, Eq, defmt::Format)]
+#[derive(PartialEq, Eq, defmt::Format, Clone, Copy)]
 pub enum OperationCommand {
     Unlock,
     Lock,
@@ -63,14 +69,29 @@ impl OperationState {
         }
     }
 
+    pub fn as_active(&self) -> Option<&ActiveState> {
+        if let OperationState::Active(active) = self {
+            Some(active)
+        } else {
+            None
+        }
+    }
+
     fn update_if_active(&mut self, f: impl FnOnce(&mut ActiveState)) {
         if let Self::Active(active) = self {
             f(active);
         }
     }
+
+    pub fn is_locked(&self) -> bool {
+        match self {
+            Self::Locked => true,
+            _ => false,
+        }
+    }
 }
 
-#[derive(PartialEq, Eq, defmt::Format, Clone)]
+#[derive(PartialEq, Eq, defmt::Format, Copy, Clone)]
 pub enum HeadlightMode {
     Auto {
         /// Headlight will switch on when ambient light reads under this
@@ -87,15 +108,15 @@ pub enum HeadlightMode {
 
 #[derive(PartialEq, Eq, defmt::Format, Clone)]
 pub struct ActiveState {
-    throttle: Throttle,
+    pub throttle: Throttle,
 
     /// Speed limit in km/h, we'll later use this to select the 25/35/45 limit
     /// sent to the controller
-    speed_limit: u8,
+    pub speed_limit: u8,
 
-    speed_mode: SpeedMode,
+    pub speed_mode: SpeedMode,
 
-    headlight_mode: HeadlightMode,
+    pub headlight_mode: HeadlightMode,
 }
 
 impl ActiveState {
@@ -120,34 +141,65 @@ async fn operation_task_() {
 
     let mut throttle_readings = crate::adc::THROTTLE_READINGS.receiver().unwrap();
 
+    let operation_commands = OPERATION_COMMANDS.receiver();
+
     let state_updates = STATE_UPDATES.sender();
 
     loop {
-        match select::select(
+        match select::select3(
             send_can_messages_ticker.next(),
             throttle_readings
                 .changed()
                 .with_timeout(Duration::from_secs(1)),
+            operation_commands.receive(),
         )
         .await
         {
-            select::Either::First(_) => {
+            select::Either3::First(_) => {
                 send_speed_and_throttle_can_messages().await;
             }
-            select::Either::Second(Ok(throttle)) => {
+            select::Either3::Second(Ok(throttle)) => {
                 update_state(|s| s.update_if_active(|a| a.throttle = throttle));
 
                 state_updates.send(());
             }
-            select::Either::Second(Err(_)) => {
+            select::Either3::Second(Err(_)) => {
                 panic!("Operation task did not receive throttle update in time");
+            }
+            select::Either3::Third(op_cmd) => {
+                match op_cmd {
+                    OperationCommand::Unlock => update_state(|s| {
+                        *s = OperationState::Active(ActiveState {
+                            throttle: Throttle(0),
+                            speed_limit: 25,
+                            speed_mode: SpeedMode::Trip,
+                            headlight_mode: HeadlightMode::Auto {
+                                low: AmbientLight(10),
+                                high: AmbientLight(30),
+                                currently_on: false,
+                            },
+                        })
+                    }),
+                    OperationCommand::Lock => update_state(|s| *s = OperationState::Locked),
+                    OperationCommand::SetSpeedLimit(new_limit) => {
+                        update_state(|s| s.update_if_active(|a| a.speed_limit = new_limit))
+                    }
+                    OperationCommand::SetSpeedMode(speed_mode) => {
+                        update_state(|s| s.update_if_active(|a| a.speed_mode = speed_mode))
+                    }
+                    OperationCommand::SetHeadlightMode(headlight_mode) => {
+                        update_state(|s| s.update_if_active(|a| a.headlight_mode = headlight_mode))
+                    }
+                }
+
+                state_updates.send(());
             }
         }
     }
 }
 
 async fn send_speed_and_throttle_can_messages() {
-    let buttons = crate::state::read_state(|s| s.buttons);
+    let buttons = crate::system_state::read_state(|s| s.buttons);
 
     if let Some((throttle, speed_limit, speed_mode, headlight)) = read_state(|s| {
         s.read_if_active(|a| (a.throttle, a.speed_limit, a.speed_mode, a.headlight_on()))

@@ -112,11 +112,9 @@ async fn buttons_rx_(rx: Serial5, mut power_button: ExtiInput<Pin<'A', 1>, 1>) {
 
                     // on framing error, read until we have nothing
                     let _ = async {
-                        for _ in 0..4 {
-                            let _ = rx.read_exact(&mut buf[..1]).await;
-                        }
+                        let _ = rx.read_exact(&mut buf).await;
                     }
-                    .with_timeout(Duration::from_millis(50))
+                    .with_timeout(Duration::from_millis(10))
                     .await;
 
                     continue;

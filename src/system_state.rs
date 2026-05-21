@@ -7,7 +7,7 @@ use crate::{
     can_proto::*,
 };
 
-static STATE_UPDATES: embassy_sync::watch::Watch<
+pub static STATE_UPDATES: embassy_sync::watch::Watch<
     embassy_sync::blocking_mutex::raw::ThreadModeRawMutex,
     (),
     4,
@@ -40,38 +40,38 @@ pub static BT_COMMANDS: embassy_sync::channel::Channel<
 
 #[derive(PartialEq, Eq, defmt::Format, Clone)]
 pub struct BatteryLevel {
-    from_controller: u8,
-    from_battery: u8,
+    pub from_controller: u8,
+    pub from_battery: u8,
 }
 
 #[derive(PartialEq, Eq, defmt::Format, Clone)]
 pub struct SystemVoltage {
-    from_controller: u16,
-    from_battery: u32,
+    pub from_controller: u16,
+    pub from_battery: u32,
 }
 
 #[derive(PartialEq, Eq, defmt::Format, Clone)]
 pub struct BatteryDebug {
-    command: u16,
-    state: u16,
-    estimated_range: u32,
+    pub command: u16,
+    pub state: u16,
+    pub estimated_range: u32,
 }
 
 #[derive(PartialEq, Eq, defmt::Format, Clone)]
 pub struct BatteryInfo {
-    relative_soc: u32,
-    absolute_soc: u32,
-    relative_soh: u8,
-    absolute_soh: u32,
-    capacity: u16,
-    charged: bool,
-    temperature: i16,
+    pub relative_soc: u32,
+    pub absolute_soc: u32,
+    pub relative_soh: u8,
+    pub absolute_soh: u32,
+    pub capacity: u16,
+    pub charged: bool,
+    pub temperature: i16,
 }
 
 #[derive(PartialEq, Eq, defmt::Format, Default, Clone)]
 pub struct BatteryChargeEntry {
-    when: chrono::DateTime<chrono::Utc>,
-    charge: u16,
+    pub when: chrono::DateTime<chrono::Utc>,
+    pub charge: u16,
 }
 
 #[derive(PartialEq, Eq, defmt::Format, Clone)]

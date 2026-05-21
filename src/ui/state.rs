@@ -1,8 +1,11 @@
-use crate::{operation::OperationState, state::SystemState};
+use crate::{
+    can_proto::SpeedMode,
+    operation::{OperationCommand, OperationState},
+    system_state::SystemState,
+};
 
 #[derive(PartialEq, Eq, Clone, Copy, defmt::Format, Default)]
 pub enum Page {
-    Locked,
     #[default]
     Home,
     Settings,
@@ -11,12 +14,8 @@ pub enum Page {
 impl Page {
     pub fn handle_action(&self, action: PageAction) -> Option<Self> {
         match (self, action) {
-            (Page::Locked, PageAction::Unlock) => Some(Page::Home),
-            (Page::Locked, _) => return None,
-            (Page::Home, PageAction::Lock) => Some(Page::Locked),
             (Page::Home, PageAction::EnterSettings) => Some(Page::Settings),
             (Page::Home, _) => return None,
-            (Page::Settings, PageAction::Lock) => Some(Page::Locked),
             (Page::Settings, PageAction::ExitSettings) => Some(Page::Home),
             (Page::Settings, _) => return None,
         }
@@ -25,8 +24,6 @@ impl Page {
 
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub enum PageAction {
-    Lock,
-    Unlock,
     EnterSettings,
     ExitSettings,
 }
@@ -39,6 +36,7 @@ pub struct State {
     pub system_state: SystemState,
     pub operation_state: OperationState,
     pub page_action: Option<PageAction>,
+    pub next_operation_command: Option<OperationCommand>,
 }
 
 impl State {
@@ -46,9 +44,10 @@ impl State {
         Self {
             page: Default::default(),
             locked_state: Default::default(),
-            system_state: crate::state::read_state(|s| s.clone()),
+            system_state: crate::system_state::read_state(|s| s.clone()),
             operation_state: crate::operation::read_state(|s| s.clone()),
             page_action: None,
+            next_operation_command: None,
         }
     }
 }

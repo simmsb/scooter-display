@@ -43,6 +43,7 @@ impl Throttle {
 
         Self(
             (raw as u32)
+                .clamp(MIN_RAW, MAX_RAW)
                 .saturating_sub(MIN_RAW)
                 .saturating_mul(OUT_MAX)
                 .saturating_div(MAX_RAW - MIN_RAW)
@@ -69,6 +70,7 @@ impl AmbientLight {
 
         Self(
             (raw as u32)
+                .clamp(MIN_RAW, MAX_RAW)
                 .saturating_sub(MIN_RAW)
                 .saturating_mul(OUT_MAX)
                 .saturating_div(MAX_RAW - MIN_RAW)

@@ -23,7 +23,7 @@ async fn can_rx(rx: CanRx<'static>) {
 }
 
 async fn can_rx_(mut rx: CanRx<'static>) {
-    let state_can_ch = crate::state::CAN_MESSAGES.sender();
+    let state_can_ch = crate::system_state::CAN_MESSAGES.sender();
 
     defmt::info!("Can RX startup");
 

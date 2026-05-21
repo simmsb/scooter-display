@@ -43,6 +43,7 @@ chrono = { version = "0.4.44", default-features = false, features = ["defmt"] }
 no-std-moving-average = "0.3.0"
 panic-reset = { version = "0.1.1", optional = true }
 butt-head = { version = "0.2.0", features = ["defmt"] }
+rotate-enum = "0.1.2"
 
 [features]
 test = ["deku/descriptive-errors"]
@@ -111,8 +112,8 @@ incremental = false
 lto = 'fat'
 opt-level = 'z'
 overflow-checks = false
-# panic = 'abort'
-panic = 'immediate-abort'
+panic = 'abort'
+# panic = 'immediate-abort'
 
 [package.metadata.docs.rs]
 cargo-args = ["-Zunstable-options", "--sort-modules-by-appearance"]

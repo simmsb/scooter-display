@@ -5,11 +5,14 @@ use buoyant::{
     render_target::{EmbeddedGraphicsRenderTarget, RenderTarget},
     view::ViewLayout,
 };
+use embassy_futures::select;
 use embassy_time::{Duration, Instant, Timer, WithTimeout};
 
 use crate::{
     buttons::{BHDuration, BHInstant, BUTTON_EVENTS, BUTTON_STATE_WATCH, Button},
     buttons_proto::Buttons,
+    operation::{self, OperationState},
+    system_state,
 };
 
 use self::state::State;
@@ -95,17 +98,45 @@ async fn ui_(mut display: crate::display::Display) {
     let mut immediate_redraw = false;
 
     let mut button_events = BUTTON_EVENTS.subscriber().unwrap();
+    let mut op_state_updates = operation::STATE_UPDATES.receiver().unwrap();
+    let mut sys_state_updates = system_state::STATE_UPDATES.receiver().unwrap();
 
     loop {
         let event = if !immediate_redraw {
-            button_events
-                .next_message_pure()
-                .with_timeout(Duration::from_millis(33))
-                .await
-                .ok()
+            match select::select4(
+                button_events.next_message_pure(),
+                op_state_updates.changed(),
+                sys_state_updates.changed(),
+                Timer::after_millis(500),
+            )
+            .await
+            {
+                select::Either4::First(but) => Some(but),
+                select::Either4::Second(_) => {
+                    operation::read_state(|s| {
+                        if &app.state().operation_state != s {
+                            // defmt::info!("Doing operation state copy");
+                            app.state_mut().operation_state.clone_from(s)
+                        }
+                    });
+                    None
+                }
+                select::Either4::Third(_) => {
+                    system_state::read_state(|s| {
+                        if &app.state().system_state != s {
+                            // defmt::info!("Doing system state copy");
+                            app.state_mut().system_state.clone_from(s);
+                        }
+                    });
+                    None
+                }
+                select::Either4::Fourth(_) => None,
+            }
         } else {
             None
         };
+
+        let start = Instant::now();
 
         if let Some((a, b)) = event.and_then(map_event) {
             app.send(a);
@@ -121,7 +152,6 @@ async fn ui_(mut display: crate::display::Display) {
 
         app.set_time(app_start.elapsed().into());
 
-        // Handle page changes
         if let Some(action) = app.state().page_action {
             let current_page = app.state().page;
             let new_page = current_page.handle_action(action);
@@ -135,16 +165,24 @@ async fn ui_(mut display: crate::display::Display) {
             defmt::trace!("Page: {}", state.page);
         }
 
+        if let Some(op_command) = app.state().next_operation_command {
+            defmt::trace!("op command: {}", op_command);
+            operation::OPERATION_COMMANDS.send(op_command).await;
+
+            app.state_mut().next_operation_command = None;
+        }
+
         if app.should_redraw() || target.clear_animation_status() {
             defmt::trace!("Redrawing");
 
             // target.clear(Rgb565::RED);
             let _start = Instant::now();
-            // app.render_animated_diffed(&mut target, &colour::BLACK, &mut diffing_mem);
-            app.render_only_target(&mut target, &colour::BACKGROUND);
-            // defmt::debug!("Drawing took {}ms", start.elapsed().as_millis());
+            app.render_animated_diffed(&mut target, &colour::BLACK, &mut diffing_mem);
+            // app.render_only_target(&mut target, &colour::BACKGROUND);
 
             immediate_redraw = true;
+
+            defmt::trace!("Display draw took {}ms", start.elapsed().as_millis());
         } else {
             immediate_redraw = false;
         }
@@ -166,7 +204,7 @@ mod view_aa {
         state::{Page, PageAction},
     };
 
-    use super::{colour::ColorFormat, state::State};
+    use super::{colour::ColorFormat, system_state::State};
 
     #[must_use]
     pub fn root_view(state: &State) -> impl View<ColorFormat, State> + use<> {

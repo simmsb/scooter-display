@@ -9,9 +9,12 @@ use buoyant::{
     },
 };
 
-use crate::ui::{
-    colour::{self, ColorFormat},
-    font, keys, state,
+use crate::{
+    operation::OperationCommand,
+    ui::{
+        colour::{self, ColorFormat},
+        font, keys, state,
+    },
 };
 
 #[derive(PartialEq, Eq, Clone, Copy, defmt::Format, Default)]
@@ -104,10 +107,11 @@ pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<
                 // TODO: make this changeable. I'll do this when there's more
                 // than one user :)
                 if state.locked_state.pin
-                    == [PinDigit::D2, PinDigit::D7, PinDigit::D0, PinDigit::D8]
+                    == [PinDigit::D0, PinDigit::D0, PinDigit::D0, PinDigit::D0]
+                    // == [PinDigit::D2, PinDigit::D7, PinDigit::D0, PinDigit::D8]
                 {
                     state.locked_state.pin = Default::default();
-                    state.page_action = Some(state::PageAction::Unlock);
+                    state.next_operation_command = Some(OperationCommand::Unlock);
                 }
             },
             |bs| {

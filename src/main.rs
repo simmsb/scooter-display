@@ -28,7 +28,7 @@ use embedded_graphics::prelude::*;
 use defmt_rtt as _;
 use static_cell::StaticCell;
 
-use scooter_display::{adc, bluetooth, buttons, can, display, operation, state, time_driver, ui};
+use scooter_display::{adc, bluetooth, buttons, can, display, operation, system_state, time_driver, ui};
 
 #[cfg(feature = "panic-scram")]
 #[inline(never)]
@@ -196,7 +196,7 @@ async fn async_main_(
     can::start_can(spawner, can_tx, can_rx);
 
     spawner.spawn(ui::ui(display).unwrap());
-    spawner.spawn(state::system_state_updater().unwrap());
+    spawner.spawn(system_state::system_state_updater().unwrap());
     spawner.spawn(adc::adc_task(adc, adc_ch12, adc_ch13, adc_ch15).unwrap());
     spawner.spawn(operation::operation_task().unwrap());
 

@@ -138,12 +138,39 @@ impl CanValue for ControllerTempMotor {
     }
 }
 
-#[derive(defmt::Format, Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(defmt::Format, Clone, Copy, PartialEq, Eq, Debug, rotate_enum::RotateEnum)]
 pub enum SpeedMode {
     Walk,
     Eco,
     Trip,
     Sport,
+}
+
+impl SpeedMode {
+    pub fn increase(self) -> Self {
+        if self == SpeedMode::Sport {
+            self
+        } else {
+            self.next()
+        }
+    }
+
+    pub fn decrease(self) -> Self {
+        if self == SpeedMode::Walk {
+            self
+        } else {
+            self.prev()
+        }
+    }
+
+    pub fn name(&self) -> &'static str {
+        match self {
+            SpeedMode::Sport => "Sport",
+            SpeedMode::Trip => "Trip",
+            SpeedMode::Eco => "Eco",
+            SpeedMode::Walk => "Walk",
+        }
+    }
 }
 
 // 515

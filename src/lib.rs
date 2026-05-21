@@ -20,7 +20,7 @@ pub mod operation;
 #[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod scram;
 #[cfg(all(target_arch = "arm", target_os = "none"))]
-pub mod state;
+pub mod system_state;
 #[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod time_driver;
 #[cfg(all(target_arch = "arm", target_os = "none"))]
