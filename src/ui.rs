@@ -80,8 +80,7 @@ fn map_event(
 }
 
 async fn ui_(mut display: crate::display::Display) {
-    let mut target =
-        EmbeddedGraphicsRenderTarget::new_hinted(&mut display.inner, colour::BLACK);
+    let mut target = EmbeddedGraphicsRenderTarget::new_hinted(&mut display.inner, colour::BLACK);
 
     let app_start = Instant::now();
 
@@ -90,7 +89,7 @@ async fn ui_(mut display: crate::display::Display) {
 
     app.focus_forward();
 
-    target.clear(colour::BACKGROUND);
+    target.clear(colour::BLACK);
 
     let mut diffing_mem = [0u8; root_view_differ_size(view::root_view)];
 
@@ -114,7 +113,7 @@ async fn ui_(mut display: crate::display::Display) {
                 select::Either4::Second(_) => {
                     operation::read_state(|s| {
                         if &app.state().operation_state != s {
-                            // defmt::info!("Doing operation state copy");
+                            defmt::trace!("Doing operation state copy");
                             app.state_mut().operation_state.clone_from(s)
                         }
                     });
@@ -123,7 +122,7 @@ async fn ui_(mut display: crate::display::Display) {
                 select::Either4::Third(_) => {
                     system_state::read_state(|s| {
                         if &app.state().system_state != s {
-                            // defmt::info!("Doing system state copy");
+                            defmt::trace!("Doing system state copy: {}", s);
                             app.state_mut().system_state.clone_from(s);
                         }
                     });
@@ -184,118 +183,6 @@ async fn ui_(mut display: crate::display::Display) {
             defmt::trace!("Display draw took {}ms", start.elapsed().as_millis());
         } else {
             immediate_redraw = false;
-        }
-    }
-}
-
-#[cfg(false)]
-mod view_aa {
-
-    use buoyant::{
-        event::{Event, Key},
-        focus::{self, FocusAction},
-        match_view,
-        view::prelude::*,
-    };
-
-    use crate::ui::{
-        color,
-        state::{Page, PageAction},
-    };
-
-    use super::{colour::ColorFormat, system_state::State};
-
-    #[must_use]
-    pub fn root_view(state: &State) -> impl View<ColorFormat, State> + use<> {
-        let paginate = move |s: &mut State, a: buoyant::view::paginate::PageEvent| {
-            s.page_action = Some(match a {
-                buoyant::view::paginate::PageEvent::Next => PageAction::Next,
-                buoyant::view::paginate::PageEvent::Previous => PageAction::Prev,
-            });
-        };
-
-        buoyant::view::Paginate::new(focus::GROUP_1, paginate, {
-            match_view!(state.page, {
-                Page::Homescreen => homescreen::view()
-                    .bound_focus(focus::BoundaryBehavior::Wrap),
-                Page::Settings => settings::view(state)
-                    .bound_focus(focus::BoundaryBehavior::Wrap),
-            })
-        })
-        .map_event::<(), _>(|event: &Event, _state| match event {
-            Event::KeyDown(key) => match key {
-                Key::UpArrow => Some(FocusAction::Previous.into_event(focus::GROUP_1)),
-                Key::DownArrow => Some(FocusAction::Next.into_event(focus::GROUP_1)),
-                _ => None,
-            },
-            _ => Some(event.clone()),
-        })
-        .padding(Edges::All, 5)
-        .background_color(colour::BACKGROUND, Rectangle)
-    }
-
-    mod homescreen {
-        use buoyant::view::prelude::*;
-
-        use crate::ui::{
-            colour::{self, ColorFormat},
-            font,
-            state::State,
-        };
-
-        #[must_use]
-        pub fn view() -> impl View<ColorFormat, State> + use<> {
-            VStack::new((
-                labeled_pair("Temperature", "23 C / 73 F", HorizontalAlignment::Leading),
-                labeled_pair("Battery Health", "100 %", HorizontalAlignment::Leading),
-                labeled_pair("Total Input", "12317 wh", HorizontalAlignment::Leading),
-                labeled_pair("Battery Cycles", "142", HorizontalAlignment::Leading),
-                labeled_pair("Total Output", "12247 wh", HorizontalAlignment::Leading),
-                labeled_pair("Screen Uses", "3460", HorizontalAlignment::Leading),
-            ))
-        }
-
-        #[must_use]
-        pub fn labeled_pair<'a, S>(
-            label: &'a str,
-            value: &'a str,
-            alignment: HorizontalAlignment,
-        ) -> impl View<ColorFormat, S> + use<'a, S> {
-            VStack::new((
-                Text::new(value, &font::B612_REGULAR).foreground_color(colour::CONTENT),
-                Text::new(label, &font::B612_REGULAR).foreground_color(colour::SECONDARY_CONTENT),
-            ))
-            .with_alignment(alignment)
-            .flex_infinite_width(alignment)
-            .with_infinite_max_height()
-        }
-    }
-
-    mod settings {
-        use buoyant::view::prelude::*;
-
-        use crate::ui::{
-            colour::{self, ColorFormat},
-            font,
-            state::State,
-        };
-
-        #[must_use]
-        pub fn view(state: &State) -> impl View<ColorFormat, State> + use<> {
-            VStack::new((
-                Text::new("Foo", &font::B612_REGULAR)
-                    .multiline_text_alignment(HorizontalTextAlignment::Center)
-                    .foreground_color(colour::CONTENT),
-                Text::new(
-                    heapless::format!(8; "{}", state.foo).unwrap(),
-                    &font::B612_REGULAR_LARGE_NUMBERS,
-                )
-                .multiline_text_alignment(HorizontalTextAlignment::Center)
-                .foreground_color(colour::SECONDARY_CONTENT),
-            ))
-            .with_alignment(HorizontalAlignment::Center)
-            .flex_infinite_width(HorizontalAlignment::Center)
-            .with_infinite_max_height()
         }
     }
 }

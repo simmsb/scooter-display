@@ -15,6 +15,6 @@ pub fn root_view(state: &super::State) -> impl View<colour::ColorFormat, super::
         (false, Page::Home) => home::view(state),
         (false, Page::Settings) => EmptyView,
     })
-    .background_color(colour::BACKGROUND, Rectangle)
+    .background_color(colour::BACKGROUND, RoundedRectangle::new(8))
     .padding(Edges::All, 5)
 }

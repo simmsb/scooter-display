@@ -3,7 +3,7 @@ use at32f4xx_hal::{
     gpio::{Analog, Pin},
     pac::ADC1,
 };
-use embassy_futures::select::{Either3, select3};
+use embassy_futures::select;
 use embassy_time::Duration;
 use no_std_moving_average::MovingAverage;
 
@@ -39,7 +39,7 @@ impl Throttle {
         const MIN_RAW: u32 = 730;
 
         // value we report to the controller when throttle is fully depressed
-        const OUT_MAX: u32 = 512;
+        const OUT_MAX: u32 = 450;
 
         Self(
             (raw as u32)
@@ -88,11 +88,11 @@ async fn adc_task_(
     ch13: Pin<'C', 3, Analog>,
 
     // unknown/ battery voltage
-    ch15: Pin<'C', 5, Analog>,
+    _ch15: Pin<'C', 5, Analog>,
 ) {
-    let mut sample_ambient_light_ticker = embassy_time::Ticker::every(Duration::from_secs(1));
+    let mut sample_ambient_light_ticker = embassy_time::Ticker::every(Duration::from_secs(200));
     let mut sample_throttle_ticker = embassy_time::Ticker::every(Duration::from_millis(100));
-    let mut sample_ch15_ticker = embassy_time::Ticker::every(Duration::from_secs(1));
+    // let mut sample_ch15_ticker = embassy_time::Ticker::every(Duration::from_secs(1));
 
     let state_reading_ch = ADC_READINGS.sender();
     let throttle_reading_ch = THROTTLE_READINGS.sender();
@@ -101,28 +101,31 @@ async fn adc_task_(
     let mut ambient_light_averager = MovingAverage::<u16, u32, 16>::new();
 
     loop {
-        match select3(
+        match select::select(
             sample_ambient_light_ticker.next(),
             sample_throttle_ticker.next(),
-            sample_ch15_ticker.next(),
+            // sample_ch15_ticker.next(),
         )
         .await
         {
-            Either3::First(_) => {
+            select::Either::First(_) => {
+                defmt::trace!("ADC measuring ambient");
                 let val = adc.convert(&ch12, SampleTime::Cycles_480).await;
                 let avg = ambient_light_averager.average(val);
                 state_reading_ch.send(AdcReading::AmbientLight(AmbientLight::from_raw(avg)));
             }
-            Either3::Second(_) => {
+            select::Either::Second(_) => {
+                defmt::trace!("ADC measuring throttle");
                 let val = adc.convert(&ch13, SampleTime::Cycles_480).await;
                 let avg = throttle_averager.average(val);
                 let thr = Throttle::from_raw(avg);
                 state_reading_ch.send(AdcReading::Throttle(thr));
                 throttle_reading_ch.send(thr);
             }
-            Either3::Third(_) => {
-                let _val = adc.convert(&ch15, SampleTime::Cycles_480).await;
-            }
+            // Either3::Third(_) => {
+            //     defmt::info!("ADC measuring unknown");
+            //     let _val = adc.convert(&ch15, SampleTime::Cycles_480).await;
+            // }
         }
     }
 }

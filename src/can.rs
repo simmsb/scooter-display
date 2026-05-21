@@ -61,9 +61,16 @@ async fn can_rx_(mut rx: CanRx<'static>) {
             Id::Extended(id) => id.as_raw(),
         };
 
-        let Some(parsed) = can_proto::CanMessage::from_can_frame(id, msg.frame.data()) else {
-            defmt::trace!("Unhandled CAN id ({}): {}", id, msg.frame.data());
-            continue;
+        let parsed = match can_proto::CanMessage::from_can_frame(id, msg.frame.data()) {
+            Ok(Some(parsed)) => parsed,
+            Ok(None) => {
+                defmt::trace!("Unhandled CAN id ({}): {}", id, msg.frame.data());
+                continue;
+            }
+            Err(reason) => {
+                defmt::error!("Failed to parse CAN id ({}): {} ({})", id, msg.frame.data(), defmt::Debug2Format(&reason));
+                continue;
+            }
         };
 
         defmt::trace!("Can RX: {}", parsed);
@@ -82,7 +89,7 @@ async fn can_tx_(mut tx: CanTx<'static>) {
 
     let can_tx_ch = CAN_TX_BUS.receiver();
 
-    let mut buf = [0u8; 8];
+    let mut buf: [u8; 8] = [0u8; 8];
 
     loop {
         let to_send = can_tx_ch.receive().await;

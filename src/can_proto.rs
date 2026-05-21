@@ -1,4 +1,4 @@
-use deku::{DekuContainerWrite as _, DekuSize};
+use deku::{DekuContainerWrite as _, DekuError, DekuSize};
 
 #[derive(defmt::Format, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CanId {
@@ -594,58 +594,58 @@ pub enum CanMessage {
 
 impl CanMessage {
     /// Try to decode a raw CAN frame into a typed message.
-    pub fn from_can_frame(can_id: u32, data: &[u8]) -> Option<Self> {
+    pub fn from_can_frame(can_id: u32, data: &[u8]) -> Result<Option<Self>, DekuError> {
         use deku::DekuContainerRead as _;
         match can_id {
             512 => ControllerStatus::from_bytes((data, 0))
-                .ok()
                 .map(|(_, x)| x)
-                .map(CanMessage::ControllerStatus),
+                .map(CanMessage::ControllerStatus)
+                .map(Some),
             513 => ControllerSpeed::from_bytes((data, 0))
-                .ok()
                 .map(|(_, x)| x)
-                .map(CanMessage::ControllerSpeed),
+                .map(CanMessage::ControllerSpeed)
+                .map(Some),
             514 => ControllerTempMotor::from_bytes((data, 0))
-                .ok()
                 .map(|(_, x)| x)
-                .map(CanMessage::ControllerTempMotor),
+                .map(CanMessage::ControllerTempMotor)
+                .map(Some),
             515 => ControllerSpeedMode::from_bytes((data, 0))
-                .ok()
                 .map(|(_, x)| x)
-                .map(CanMessage::ControllerSpeedMode),
+                .map(CanMessage::ControllerSpeedMode)
+                .map(Some),
             528 => ControllerSpeedLimit::from_bytes((data, 0))
-                .ok()
                 .map(|(_, x)| x)
-                .map(CanMessage::ControllerSpeedLimit),
+                .map(CanMessage::ControllerSpeedLimit)
+                .map(Some),
             1024 => BatteryCommandState::from_bytes((data, 0))
-                .ok()
                 .map(|(_, x)| x)
-                .map(CanMessage::BatteryCommandState),
+                .map(CanMessage::BatteryCommandState)
+                .map(Some),
             1025 => BatteryVoltageCurrent::from_bytes((data, 0))
-                .ok()
                 .map(|(_, x)| x)
-                .map(CanMessage::BatteryVoltageCurrent),
+                .map(CanMessage::BatteryVoltageCurrent)
+                .map(Some),
             1026 => BatteryChargeLevel::from_bytes((data, 0))
-                .ok()
                 .map(|(_, x)| x)
-                .map(CanMessage::BatteryChargeLevel),
+                .map(CanMessage::BatteryChargeLevel)
+                .map(Some),
             1027 => BatteryStateOfHealth::from_bytes((data, 0))
-                .ok()
                 .map(|(_, x)| x)
-                .map(CanMessage::BatteryStateOfHealth),
+                .map(CanMessage::BatteryStateOfHealth)
+                .map(Some),
             1028 => BatteryCapacityTemp::from_bytes((data, 0))
-                .ok()
                 .map(|(_, x)| x)
-                .map(CanMessage::BatteryCapacityTemp),
+                .map(CanMessage::BatteryCapacityTemp)
+                .map(Some),
             1863 if data.len() == 8 => BatteryChargeHistoryEntry::from_bytes((data, 0))
-                .ok()
                 .map(|(_, x)| x)
-                .map(CanMessage::BatteryChargeHistoryEntry),
+                .map(CanMessage::BatteryChargeHistoryEntry)
+                .map(Some),
             1863 if data.len() == 4 => BatteryChargeHistoryCharge::from_bytes((data, 0))
-                .ok()
                 .map(|(_, x)| x)
-                .map(CanMessage::BatteryChargeHistoryCharge),
-            _ => None,
+                .map(CanMessage::BatteryChargeHistoryCharge)
+                .map(Some),
+            _ => Ok(None),
         }
     }
 

@@ -1,25 +1,27 @@
 use buoyant::{
     event::Event,
     focus::{self, FocusAction},
-    view::{
-        HStack, VStack, View,
-        paginate::PageEvent,
-        prelude::*,
-    },
+    view::{HStack, VStack, View, paginate::PageEvent, prelude::*},
 };
 
 use crate::{
-    buttons_proto::Buttons, operation::{HeadlightMode, OperationCommand}, ui::{
+    buttons_proto::Buttons,
+    operation::{HeadlightMode, OperationCommand},
+    ui::{
         colour::{self, ColorFormat},
         font, keys, state,
-    }
+    },
 };
 
 #[must_use]
 pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<> {
     Paginate::new(
         focus::GROUP_0,
-        |c, evt| if let PageEvent::Next = evt { c.page_action = Some(state::PageAction::EnterSettings) },
+        |c, evt| {
+            if let PageEvent::Next = evt {
+                c.page_action = Some(state::PageAction::EnterSettings)
+            }
+        },
         Paginate::new(
             focus::GROUP_1,
             |c, evt| {
@@ -113,7 +115,7 @@ fn body(state: &state::State) -> impl View<ColorFormat, ()> + use<> {
                     left_blinker,
                 ),
                 infocard(
-                    state.system_state.battery_level.from_battery as i16,
+                    state.system_state.battery_info.relative_soc as i16,
                     "% Battery",
                     left_blinker,
                 ),
@@ -123,8 +125,8 @@ fn body(state: &state::State) -> impl View<ColorFormat, ()> + use<> {
                 half_infocard(
                     format_args!(
                         "{}.{}",
-                        state.system_state.battery_current / 1000,
-                        (state.system_state.battery_current / 100) % 10
+                        (-state.system_state.battery_current / 1000) as i16,
+                        (((-state.system_state.battery_current) / 100) % 10) as u8
                     ),
                     "A",
                     right_blinker,
@@ -148,8 +150,12 @@ fn body(state: &state::State) -> impl View<ColorFormat, ()> + use<> {
 
 fn speedo(state: &state::State) -> impl View<ColorFormat, ()> + use<> {
     HStack::new((
-        Text::new_fmt::<4>(
-            format_args!("{}", state.system_state.motor_speed),
+        Text::new_fmt::<10>(
+            format_args!(
+                "{}.{}",
+                (state.system_state.motor_speed / 100) as u8,
+                ((state.system_state.motor_speed / 10) % 10) as u8,
+            ),
             &font::B612_REGULAR_VERY_LARGE_NUMBERS,
         )
         .with_font_size(2)

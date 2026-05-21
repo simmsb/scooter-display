@@ -227,6 +227,8 @@ async fn send_speed_and_throttle_can_messages() {
             speed_limit,
         );
 
+        defmt::trace!("Sending thottle: {}", throttle_msg);
+
         CAN_TX_BUS
             .send(crate::can_proto::Sent::DisplayThrottle(throttle_msg))
             .await;
