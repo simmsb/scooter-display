@@ -19,3 +19,14 @@ glyphr::generate_font! {
         padding: 0
     }
 }
+
+glyphr::generate_font! {
+    name: B612_REGULAR_VERY_LARGE_NUMBERS,
+    path: "B612-Regular.ttf",
+    size: 48,
+    characters: "0-9",
+    format: Bitmap {
+        spread: 20.0,
+        padding: 0
+    }
+}

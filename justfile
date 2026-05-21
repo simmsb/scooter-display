@@ -18,7 +18,7 @@ run:
     cargo run --release -Z build-std=core,alloc,panic_abort -Z build-std-features=compiler-builtins-mem,optimize_for_size
 
 docs PKG="scooter-display":
-    cargo doc -Z build-std=core,alloc,panic_abort -Z build-std-features=compiler-builtins-mem,optimize_for_size --open -p {{PKG}}
+    RUSTDOCFLAGS="-Z unstable-options --sort-modules-by-appearance" cargo doc -Z build-std=core,alloc,panic_abort -Z build-std-features=compiler-builtins-mem,optimize_for_size --open --document-private-items -p {{PKG}}
 
 test:
     cargo test --target aarch64-apple-darwin --no-default-features --features test

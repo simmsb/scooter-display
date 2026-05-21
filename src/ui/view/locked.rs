@@ -95,7 +95,7 @@ pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<
     VStack::new((
         Text::new("Enter PIN", &font::B612_REGULAR)
             .multiline_text_alignment(HorizontalTextAlignment::Center)
-            .foreground_color(colour::CONTENT),
+            .foreground_color(colour::ON_BACKGROUND),
         Lens::new(pin_entry(&state.locked_state), |s: &mut state::State| {
             &mut s.locked_state
         }),
@@ -113,27 +113,29 @@ pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<
             |bs| {
                 Text::new("Confirm", &font::B612_REGULAR)
                     .multiline_text_alignment(HorizontalTextAlignment::Center)
+                    .padding(Edges::All, 4)
                     .foreground_color(if bs.is_focused() {
-                        colour::SECONDARY_CONTENT
+                        colour::ON_PRIMARY
                     } else {
-                        colour::CONTENT
+                        colour::ON_PRIMARY_FIXED
                     })
                     .background_color(
                         if bs.is_focused() {
-                            colour::SECONDARY_BACKGROUND
+                            colour::PRIMARY
                         } else {
-                            colour::BACKGROUND
+                            colour::PRIMARY_FIXED
                         },
                         RoundedRectangle::new(4),
                     )
             },
         ),
     ))
+    .with_spacing(2)
     .with_alignment(HorizontalAlignment::Center)
     .flex_infinite_width(HorizontalAlignment::Center)
     .with_infinite_max_height()
     .focus_touches()
-    .map_event(|event, _: &mut State| match event {
+    .map_event(|event, _: &mut ()| match event {
         Event::KeyDown(key) => match *key {
             keys::UP_CLICK => Some(FocusAction::Previous.into_event(focus::GROUP_0)),
             keys::DOWN_CLICK => Some(FocusAction::Next.into_event(focus::GROUP_0)),
@@ -164,16 +166,18 @@ fn pin_piece(pin: PinDigit) -> impl View<ColorFormat, PinDigit> {
         move |rotary_state| {
             Text::new(pin.as_str(), &font::B612_REGULAR_LARGE_NUMBERS)
             .padding(Edges::All, 4)
-            .foreground_color(if rotary_state == RotaryState::Captive {
-                colour::SECONDARY_CONTENT
-            } else {
-                colour::CONTENT
-            })
+            .foreground_color(
+                match rotary_state {
+                    RotaryState::UnFocused => colour::ON_BACKGROUND,
+                    RotaryState::Focused => colour::ON_BACKGROUND,
+                    RotaryState::Captive => colour::ON_PRIMARY_FIXED,
+                }
+            )
             .background(Alignment::Center,
                         match_view!(rotary_state, {
                             RotaryState::UnFocused => EmptyView,
-                            RotaryState::Focused => RoundedRectangle::new(4).stroked(2).foreground_color(colour::SECONDARY_BACKGROUND),
-                            RotaryState::Captive => RoundedRectangle::new(4).stroked(2).foreground_color(colour::RED)
+                            RotaryState::Focused => RoundedRectangle::new(4).stroked(2).foreground_color(colour::PRIMARY),
+                            RotaryState::Captive => RoundedRectangle::new(4).stroked(2).foreground_color(colour::PRIMARY_FIXED)
                         })
             )
                 .content_shape(Rectangle.corner_radius(4))

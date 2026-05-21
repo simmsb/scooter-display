@@ -104,47 +104,48 @@ impl DrawTarget for Display {
     where
         I: IntoIterator<Item = Self::Color>,
     {
-        if area.size.width == 0 {
-            return Ok(());
-        }
+        self.inner.fill_contiguous(area, colors)
+        // if area.size.width == 0 {
+        //     return Ok(());
+        // }
 
-        let rows_per_chunk = self.partial_buf.len() / (area.size.width as usize);
-        let slice = &mut self.partial_buf[..(rows_per_chunk * area.size.width as usize)];
+        // let rows_per_chunk = self.partial_buf.len() / (area.size.width as usize);
+        // let slice = &mut self.partial_buf[..(rows_per_chunk * area.size.width as usize)];
 
-        // partial fb too small, fallback to non buffered
-        if rows_per_chunk == 0 {
-            self.inner.fill_contiguous(area, colors)
-        } else {
-            let mut colors = colors.into_iter();
-            let chunks = area.size.height / rows_per_chunk as u32;
-            let remainder = area.size.height % rows_per_chunk as u32;
+        // // partial fb too small, fallback to non buffered
+        // if rows_per_chunk == 0 {
+        //     self.inner.fill_contiguous(area, colors)
+        // } else {
+        //     let mut colors = colors.into_iter();
+        //     let chunks = area.size.height / rows_per_chunk as u32;
+        //     let remainder = area.size.height % rows_per_chunk as u32;
 
-            let chunked_rect = Rectangle::new(
-                area.top_left,
-                Size::new(area.size.width, rows_per_chunk as u32),
-            );
+        //     let chunked_rect = Rectangle::new(
+        //         area.top_left,
+        //         Size::new(area.size.width, rows_per_chunk as u32),
+        //     );
 
-            for n in 0..chunks {
-                for p in slice.iter_mut() {
-                    let Some(c) = colors.next() else {
-                        return Ok(());
-                    };
-                    *p = c;
-                }
+        //     for n in 0..chunks {
+        //         for p in slice.iter_mut() {
+        //             let Some(c) = colors.next() else {
+        //                 return Ok(());
+        //             };
+        //             *p = c;
+        //         }
 
-                self.inner.fill_contiguous(
-                    &chunked_rect.translate(Point::new(0, n as i32)),
-                    slice.iter().copied(),
-                )?;
-            }
+        //         self.inner.fill_contiguous(
+        //             &chunked_rect.translate(Point::new(0, n as i32)),
+        //             slice.iter().copied(),
+        //         )?;
+        //     }
 
-            let remainder_rect = Rectangle::new(
-                area.top_left + Point::new(0, chunks as i32 * rows_per_chunk as i32),
-                Size::new(area.size.width, remainder),
-            );
+        //     let remainder_rect = Rectangle::new(
+        //         area.top_left + Point::new(0, chunks as i32 * rows_per_chunk as i32),
+        //         Size::new(area.size.width, remainder),
+        //     );
 
-            self.inner.fill_contiguous(&remainder_rect, colors)
-        }
+        //     self.inner.fill_contiguous(&remainder_rect, colors)
+        // }
     }
 
     fn fill_solid(

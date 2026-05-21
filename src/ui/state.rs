@@ -2,8 +2,8 @@ use crate::{operation::OperationState, state::SystemState};
 
 #[derive(PartialEq, Eq, Clone, Copy, defmt::Format, Default)]
 pub enum Page {
-    #[default]
     Locked,
+    #[default]
     Home,
     Settings,
 }

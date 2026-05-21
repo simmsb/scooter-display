@@ -113,3 +113,6 @@ opt-level = 'z'
 overflow-checks = false
 # panic = 'abort'
 panic = 'immediate-abort'
+
+[package.metadata.docs.rs]
+cargo-args = ["-Zunstable-options", "--sort-modules-by-appearance"]
