@@ -8,13 +8,13 @@ use embassy_time::Duration;
 use no_std_moving_average::MovingAverage;
 
 pub static ADC_READINGS: embassy_sync::watch::Watch<
-    embassy_sync::blocking_mutex::raw::ThreadModeRawMutex,
+    embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
     AdcReading,
     4,
 > = embassy_sync::watch::Watch::new();
 
 pub static THROTTLE_READINGS: embassy_sync::watch::Watch<
-    embassy_sync::blocking_mutex::raw::ThreadModeRawMutex,
+    embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
     Throttle,
     4,
 > = embassy_sync::watch::Watch::new();

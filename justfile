@@ -23,8 +23,9 @@ docs PKG="scooter-display":
 test:
     cargo test --target aarch64-apple-darwin --no-default-features --features test
 
-bloat:
-    cargo bloat --release -Z build-std=core,alloc,panic_abort -Z build-std-features=compiler-builtins-mem,optimize_for_size
+[positional-arguments]
+@bloat *args="":
+    cargo bloat --release -Z build-std=core,alloc,panic_abort -Z build-std-features=compiler-builtins-mem,optimize_for_size "$@"
 
 [positional-arguments]
 @asm *args="":

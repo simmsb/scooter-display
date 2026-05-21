@@ -10,7 +10,7 @@ use at32f4xx_hal::{
     uart::{Rx, Tx},
 };
 use deku::DekuContainerRead as _;
-use embassy_executor::Spawner;
+use embassy_executor::{SendSpawner, Spawner};
 use embassy_sync::{blocking_mutex, zerocopy_channel};
 use embassy_time::{Duration, Ticker};
 use embedded_io_async::Write as _;
@@ -19,16 +19,16 @@ use static_cell::StaticCell;
 // `[0x55, length, unknown, handler_idx_low, handler_idx_high, ...[data], crc[0], crc[1]]`
 
 static COMMAND_CHANNEL: StaticCell<
-    zerocopy_channel::Channel<'static, blocking_mutex::raw::ThreadModeRawMutex, Command>,
+    zerocopy_channel::Channel<'static, blocking_mutex::raw::CriticalSectionRawMutex, Command>,
 > = StaticCell::new();
 static COMMAND_BUF: StaticCell<[Command; 1]> = StaticCell::new();
 
 static EXT_COMMAND_CHANNEL: StaticCell<
-    zerocopy_channel::Channel<'static, blocking_mutex::raw::ThreadModeRawMutex, Command>,
+    zerocopy_channel::Channel<'static, blocking_mutex::raw::CriticalSectionRawMutex, Command>,
 > = StaticCell::new();
 static EXT_COMMAND_BUF: StaticCell<[Command; 1]> = StaticCell::new();
 
-pub fn start_bluetooth(spawner: Spawner, uart: Serial2) {
+pub fn start_bluetooth(spawner: SendSpawner, uart: Serial2) {
     let (bt_tx, bt_rx) = uart.split();
 
     let buf = COMMAND_BUF.init([const { Command::Unknown0(Unknown0Command) }; _]);
@@ -49,7 +49,7 @@ pub fn start_bluetooth(spawner: Spawner, uart: Serial2) {
 #[embassy_executor::task]
 async fn bluetooth_rx(
     rx: Rx<USART2, u8>,
-    cmd_sender: zerocopy_channel::Sender<'static, blocking_mutex::raw::ThreadModeRawMutex, Command>,
+    cmd_sender: zerocopy_channel::Sender<'static, blocking_mutex::raw::CriticalSectionRawMutex, Command>,
 ) {
     bluetooth_rx_(rx, cmd_sender).await;
 }
@@ -58,7 +58,7 @@ async fn bluetooth_rx_(
     mut rx: Rx<USART2, u8>,
     mut cmd_sender: zerocopy_channel::Sender<
         'static,
-        blocking_mutex::raw::ThreadModeRawMutex,
+        blocking_mutex::raw::CriticalSectionRawMutex,
         Command,
     >,
 ) {
@@ -118,12 +118,12 @@ async fn bluetooth_tx(
     tx: Tx<USART2, u8>,
     cmd_receiver: zerocopy_channel::Receiver<
         'static,
-        blocking_mutex::raw::ThreadModeRawMutex,
+        blocking_mutex::raw::CriticalSectionRawMutex,
         Command,
     >,
     ext_cmd_receiver: zerocopy_channel::Receiver<
         'static,
-        blocking_mutex::raw::ThreadModeRawMutex,
+        blocking_mutex::raw::CriticalSectionRawMutex,
         Command,
     >,
 ) {
@@ -134,12 +134,12 @@ async fn bluetooth_tx_(
     mut tx: Tx<USART2, u8>,
     mut cmd_receiver: zerocopy_channel::Receiver<
         'static,
-        blocking_mutex::raw::ThreadModeRawMutex,
+        blocking_mutex::raw::CriticalSectionRawMutex,
         Command,
     >,
     mut ext_cmd_receiver: zerocopy_channel::Receiver<
         'static,
-        blocking_mutex::raw::ThreadModeRawMutex,
+        blocking_mutex::raw::CriticalSectionRawMutex,
         Command,
     >,
 ) {
@@ -282,7 +282,7 @@ async fn bluetooth_tx_(
 
 #[embassy_executor::task]
 async fn bluetooth_push_task_(
-    cmd_sender: zerocopy_channel::Sender<'static, blocking_mutex::raw::ThreadModeRawMutex, Command>,
+    cmd_sender: zerocopy_channel::Sender<'static, blocking_mutex::raw::CriticalSectionRawMutex, Command>,
 ) {
     bluetooth_push_task(cmd_sender).await;
 }
@@ -290,7 +290,7 @@ async fn bluetooth_push_task_(
 async fn bluetooth_push_task(
     mut cmd_sender: zerocopy_channel::Sender<
         'static,
-        blocking_mutex::raw::ThreadModeRawMutex,
+        blocking_mutex::raw::CriticalSectionRawMutex,
         Command,
     >,
 ) {

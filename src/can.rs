@@ -1,17 +1,17 @@
 use at32f4xx_hal::can::{CanRx, CanTx, Frame, Id, filter::Mask32};
-use embassy_executor::Spawner;
+use embassy_executor::{SendSpawner, Spawner};
 use embassy_futures::select;
 use embassy_time::Duration;
 
 use crate::can_proto::{self, DisplayChargeHistoryRequest};
 
 pub static CAN_TX_BUS: embassy_sync::channel::Channel<
-    embassy_sync::blocking_mutex::raw::ThreadModeRawMutex,
+    embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
     can_proto::Sent,
     1,
 > = embassy_sync::channel::Channel::new();
 
-pub fn start_can(spawner: Spawner, tx: CanTx<'static>, rx: CanRx<'static>) {
+pub fn start_can(spawner: SendSpawner, tx: CanTx<'static>, rx: CanRx<'static>) {
     spawner.spawn(can_rx(rx).unwrap());
     spawner.spawn(can_tx(tx).unwrap());
     spawner.spawn(can_periodic().unwrap());

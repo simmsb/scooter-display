@@ -2,7 +2,8 @@
 #![no_main]
 
 use defmt::info;
-use embassy_executor::Spawner;
+use embassy_executor::{InterruptExecutor, SendSpawner, Spawner};
+use at32f4xx_hal::interrupt;
 
 #[cfg(feature = "panic-probe")]
 use panic_probe as _;
@@ -13,7 +14,7 @@ use at32f4xx_hal::{
     crm::{Clocks, Enable, Reset},
     exti::{ExtiExt as _, ExtiInput},
     gpio::{GpioBusExt as _, PinSpeed as _, Speed},
-    pac::Peripherals,
+    pac::{NVIC, Peripherals},
     prelude::*,
     serial::Serial2,
     timer::{Channel1, Timer},
@@ -28,7 +29,11 @@ use embedded_graphics::prelude::*;
 use defmt_rtt as _;
 use static_cell::StaticCell;
 
-use scooter_display::{adc, bluetooth, buttons, can, display, operation, system_state, time_driver, ui};
+use scooter_display::{
+    adc, bluetooth, buttons, can, display, operation, system_state, time_driver, ui,
+};
+
+static EXECUTOR_HIGH: InterruptExecutor = InterruptExecutor::new();
 
 #[cfg(feature = "panic-scram")]
 #[inline(never)]
@@ -44,12 +49,19 @@ unsafe fn HardFault(_frame: &cortex_m_rt::ExceptionFrame) -> ! {
 }
 
 #[embassy_executor::task]
-async fn async_main(spawner: Spawner, dp: Peripherals, cp: cortex_m::Peripherals, clocks: Clocks) {
-    async_main_(spawner, dp, cp, clocks).await;
+async fn async_main(
+    low_spawner: Spawner,
+    high_spawner: SendSpawner,
+    dp: Peripherals,
+    cp: cortex_m::Peripherals,
+    clocks: Clocks,
+) {
+    async_main_(low_spawner, high_spawner, dp, cp, clocks).await;
 }
 
 async fn async_main_(
-    spawner: Spawner,
+    low_spawner: Spawner,
+    high_spawner: SendSpawner,
     dp: Peripherals,
     mut cp: cortex_m::Peripherals,
     clocks: Clocks,
@@ -191,14 +203,14 @@ async fn async_main_(
     let adc_ch13 = gpioc.pc3.into_analog();
     let adc_ch15 = gpioc.pc5.into_analog();
 
-    bluetooth::start_bluetooth(spawner, usart2);
-    buttons::start_buttons(spawner, uart5, power_button);
-    can::start_can(spawner, can_tx, can_rx);
+    bluetooth::start_bluetooth(high_spawner, usart2);
+    buttons::start_buttons(high_spawner, uart5, power_button);
+    can::start_can(high_spawner, can_tx, can_rx);
 
-    spawner.spawn(ui::ui(display).unwrap());
-    spawner.spawn(system_state::system_state_updater().unwrap());
-    spawner.spawn(adc::adc_task(adc, adc_ch12, adc_ch13, adc_ch15).unwrap());
-    spawner.spawn(operation::operation_task().unwrap());
+    low_spawner.spawn(ui::ui(display).unwrap());
+    high_spawner.spawn(system_state::system_state_updater().unwrap());
+    high_spawner.spawn(adc::adc_task(adc, adc_ch12, adc_ch13, adc_ch15).unwrap());
+    high_spawner.spawn(operation::operation_task().unwrap());
 
     loop {
         defmt::debug!("Tick");
@@ -206,11 +218,18 @@ async fn async_main_(
     }
 }
 
+#[interrupt]
+fn OTGFS() {
+    unsafe {
+        EXECUTOR_HIGH.on_interrupt();
+    }
+}
+
 #[entry]
 fn main() -> ! {
     cortex_m::asm::delay(100000);
     let dp = unsafe { hal::pac::Peripherals::steal() };
-    let cp = cortex_m::peripheral::Peripherals::take().unwrap();
+    let mut cp = cortex_m::peripheral::Peripherals::take().unwrap();
     let crm = dp.CRM.constrain();
     let clocks = crm
         .cfgr
@@ -231,8 +250,15 @@ fn main() -> ! {
     static EXECUTOR: StaticCell<embassy_executor::Executor> = StaticCell::new();
     let executor = EXECUTOR.init(embassy_executor::Executor::new());
 
+    unsafe {
+        cp.NVIC.set_priority(at32f4xx_hal::interrupt::OTGFS, 6);
+        NVIC::unpend(at32f4xx_hal::interrupt::OTGFS);
+        NVIC::unmask(at32f4xx_hal::interrupt::OTGFS);
+    }
+    let high_spawner = EXECUTOR_HIGH.start(at32f4xx_hal::interrupt::OTGFS);
+
     let dp = unsafe { hal::pac::Peripherals::steal() };
     executor.run(move |spawner| {
-        spawner.spawn(async_main(spawner, dp, cp, clocks).unwrap());
+        spawner.spawn(async_main(spawner, high_spawner, dp, cp, clocks).unwrap());
     });
 }

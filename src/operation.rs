@@ -11,13 +11,13 @@ use crate::{
 };
 
 pub static STATE_UPDATES: embassy_sync::watch::Watch<
-    embassy_sync::blocking_mutex::raw::ThreadModeRawMutex,
+    embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
     (),
     4,
 > = embassy_sync::watch::Watch::new_with(());
 
 static STATE: embassy_sync::blocking_mutex::Mutex<
-    embassy_sync::blocking_mutex::raw::ThreadModeRawMutex,
+    embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
     OperationState,
 > = embassy_sync::blocking_mutex::Mutex::new(OperationState::DEFAULT);
 
@@ -30,7 +30,7 @@ fn update_state<T>(f: impl for<'a> FnOnce(&'a mut OperationState) -> T) -> T {
 }
 
 pub static OPERATION_COMMANDS: embassy_sync::channel::Channel<
-    embassy_sync::blocking_mutex::raw::ThreadModeRawMutex,
+    embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
     OperationCommand,
     1,
 > = embassy_sync::channel::Channel::new();

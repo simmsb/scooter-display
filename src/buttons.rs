@@ -6,7 +6,7 @@
 use at32f4xx_hal::{exti::ExtiInput, gpio::Pin, uart::Serial5};
 use butt_head::{ButtHead, ServiceTiming};
 use deku::DekuContainerRead as _;
-use embassy_executor::Spawner;
+use embassy_executor::{SendSpawner, Spawner};
 use embassy_futures::select::{self, select};
 use embassy_sync::{blocking_mutex, pubsub::PubSubChannel, watch::Watch};
 use embassy_time::{Duration, Instant, WithTimeout};
@@ -15,7 +15,7 @@ use embedded_io_async::Read as _;
 use crate::buttons_proto::{self, ButtonParser, Buttons};
 
 pub static BUTTON_STATE_WATCH: Watch<
-    blocking_mutex::raw::ThreadModeRawMutex,
+    blocking_mutex::raw::CriticalSectionRawMutex,
     buttons_proto::Buttons,
     4,
 > = Watch::new();
@@ -67,14 +67,14 @@ pub enum Button {
 }
 
 pub static BUTTON_EVENTS: PubSubChannel<
-    blocking_mutex::raw::ThreadModeRawMutex,
+    blocking_mutex::raw::CriticalSectionRawMutex,
     (Button, butt_head::Event<BHDuration, BHInstant>),
     4,
     4,
     1,
 > = PubSubChannel::new();
 
-pub fn start_buttons(spawner: Spawner, uart: Serial5, power_button: ExtiInput<Pin<'A', 1>, 1>) {
+pub fn start_buttons(spawner: SendSpawner, uart: Serial5, power_button: ExtiInput<Pin<'A', 1>, 1>) {
     spawner.spawn(buttons_rx(uart, power_button).unwrap());
     spawner.spawn(buttons_eventer().unwrap());
 }
