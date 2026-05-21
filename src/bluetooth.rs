@@ -10,7 +10,7 @@ use at32f4xx_hal::{
     uart::{Rx, Tx},
 };
 use deku::DekuContainerRead as _;
-use embassy_executor::{SendSpawner, Spawner};
+use embassy_executor::SendSpawner;
 use embassy_sync::{blocking_mutex, zerocopy_channel};
 use embassy_time::{Duration, Ticker};
 use embedded_io_async::Write as _;

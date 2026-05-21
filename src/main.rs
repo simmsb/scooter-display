@@ -24,7 +24,6 @@ use at32f4xx_hal::{
     },
 };
 use cortex_m_rt::entry;
-use embedded_graphics::prelude::*;
 
 use defmt_rtt as _;
 use static_cell::StaticCell;
@@ -95,35 +94,7 @@ async fn async_main_(
     });
 
     info!("Setup gpio");
-
-    // allocator::init();
-
-    // info!("Setup alloc");
-
-    // let wwdt_sts = dp.WWDT.sts().read();
-    // let wwdt_ctrl = dp.WWDT.ctrl().read();
-    // let wwdt_cfg = dp.WWDT.cfg().read();
-    // info!("wwdt: {}, {}, {}",
-    //       defmt::Debug2Format(&wwdt_sts),
-    //       defmt::Debug2Format(&wwdt_ctrl),
-    //       defmt::Debug2Format(&wwdt_cfg)
-    // );
-
-    // let wdt_cmd = dp.WDT.cmd().read();
-    // let wdt_div = dp.WDT.div().read();
-    // let wdt_rld = dp.WDT.rld().read();
-    // let wdt_sts = dp.WDT.sts().read();
-    // info!("wdt: {}, {}, {}, {}",
-    //       defmt::Debug2Format(&wdt_cmd),
-    //       defmt::Debug2Format(&wdt_div),
-    //       defmt::Debug2Format(&wdt_rld),
-    //       defmt::Debug2Format(&wdt_sts)
-    // );
-
-    // let icache_enabled = at32f4xx_hal::pac::SCB::icache_enabled();
-    // let dcache_enabled = at32f4xx_hal::pac::SCB::dcache_enabled();
     cp.SCB.enable_icache();
-    // info!("icache: {}, dcache: {}", icache_enabled, dcache_enabled);
 
     let mut delay = Timer::syst(cp.SYST, &clocks).delay();
 
@@ -138,9 +109,6 @@ async fn async_main_(
     backlight_pwm.set_duty(backlight_pwm.get_max_duty() / 8);
     backlight_pwm.enable();
 
-    static DISPLAY_BUF: StaticCell<[display::Color; 256]> = StaticCell::new();
-    let display_buf = DISPLAY_BUF.init_with(|| [display::Color::BLACK; _]);
-
     let display = display::init(
         gpioc.pc0.into_push_pull_output().speed(Speed::High),
         gpioc.pc13.into_push_pull_output().speed(Speed::High),
@@ -150,7 +118,6 @@ async fn async_main_(
         gpiob_bus,
         &mut delay,
         backlight_pwm,
-        display_buf,
     );
 
     let can = at32f4xx_hal::can::Can::new(dp.CAN1, gpioa.pa11, gpioa.pa12, &clocks);

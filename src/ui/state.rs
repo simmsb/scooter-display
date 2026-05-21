@@ -1,5 +1,4 @@
 use crate::{
-    can_proto::SpeedMode,
     operation::{OperationCommand, OperationState},
     system_state::SystemState,
 };
@@ -15,9 +14,9 @@ impl Page {
     pub fn handle_action(&self, action: PageAction) -> Option<Self> {
         match (self, action) {
             (Page::Home, PageAction::EnterSettings) => Some(Page::Settings),
-            (Page::Home, _) => return None,
+            (Page::Home, _) => None,
             (Page::Settings, PageAction::ExitSettings) => Some(Page::Home),
-            (Page::Settings, _) => return None,
+            (Page::Settings, _) => None,
         }
     }
 }
@@ -37,6 +36,12 @@ pub struct State {
     pub operation_state: OperationState,
     pub page_action: Option<PageAction>,
     pub next_operation_command: Option<OperationCommand>,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl State {

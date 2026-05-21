@@ -1,17 +1,15 @@
 use buoyant::{
     app::Harness as _,
-    event::Key,
     focus::Role,
     render_target::{EmbeddedGraphicsRenderTarget, RenderTarget},
     view::ViewLayout,
 };
 use embassy_futures::select;
-use embassy_time::{Duration, Instant, Timer, WithTimeout};
+use embassy_time::{Instant, Timer};
 
 use crate::{
-    buttons::{BHDuration, BHInstant, BUTTON_EVENTS, BUTTON_STATE_WATCH, Button},
-    buttons_proto::Buttons,
-    operation::{self, OperationState},
+    buttons::{BHDuration, BHInstant, BUTTON_EVENTS, Button},
+    operation::{self},
     system_state,
 };
 
@@ -82,7 +80,8 @@ fn map_event(
 }
 
 async fn ui_(mut display: crate::display::Display) {
-    let mut target = EmbeddedGraphicsRenderTarget::new_hinted(&mut display, colour::BACKGROUND);
+    let mut target =
+        EmbeddedGraphicsRenderTarget::new_hinted(&mut display.inner, colour::BLACK);
 
     let app_start = Instant::now();
 

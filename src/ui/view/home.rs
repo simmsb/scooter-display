@@ -1,12 +1,10 @@
 use buoyant::{
-    event::{Event, Key},
+    event::Event,
     focus::{self, FocusAction},
-    match_view,
     view::{
-        HStack, Rotary, VStack, View,
+        HStack, VStack, View,
         paginate::PageEvent,
         prelude::*,
-        rotary::{RotaryEvent, RotaryState},
     },
 };
 
@@ -21,10 +19,7 @@ use crate::{
 pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<> {
     Paginate::new(
         focus::GROUP_0,
-        |c, evt| match evt {
-            PageEvent::Next => c.page_action = Some(state::PageAction::EnterSettings),
-            _ => {}
-        },
+        |c, evt| if let PageEvent::Next = evt { c.page_action = Some(state::PageAction::EnterSettings) },
         Paginate::new(
             focus::GROUP_1,
             |c, evt| {
@@ -134,7 +129,7 @@ fn body(state: &state::State) -> impl View<ColorFormat, ()> + use<> {
                     "A",
                     right_blinker,
                 ),
-                infocard(123 as i16, "km Range", right_blinker),
+                infocard(123_i16, "km Range", right_blinker),
             ))
             .with_spacing(8),
         ))

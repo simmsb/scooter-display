@@ -1,5 +1,5 @@
 use at32f4xx_hal::can::{CanRx, CanTx, Frame, Id, filter::Mask32};
-use embassy_executor::{SendSpawner, Spawner};
+use embassy_executor::SendSpawner;
 use embassy_futures::select;
 use embassy_time::Duration;
 

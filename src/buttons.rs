@@ -6,7 +6,7 @@
 use at32f4xx_hal::{exti::ExtiInput, gpio::Pin, uart::Serial5};
 use butt_head::{ButtHead, ServiceTiming};
 use deku::DekuContainerRead as _;
-use embassy_executor::{SendSpawner, Spawner};
+use embassy_executor::SendSpawner;
 use embassy_futures::select::{self, select};
 use embassy_sync::{blocking_mutex, pubsub::PubSubChannel, watch::Watch};
 use embassy_time::{Duration, Instant, WithTimeout};

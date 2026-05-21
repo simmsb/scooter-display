@@ -5,11 +5,7 @@ use at32f4xx_hal::{
     gpio::{Output, Pin},
     timer::SysDelay,
 };
-use embedded_graphics::{
-    draw_target::DrawTarget,
-    prelude::{Dimensions, Point, Size, Transform as _},
-    primitives::Rectangle,
-};
+use embedded_graphics::draw_target::DrawTarget;
 use mipidsi::interface::InterfaceKind;
 
 pub struct BusAsU8<const P: char, const SHIFT: u8, const MASK: u16> {
@@ -75,90 +71,6 @@ pub struct Display {
     _rd_pin: RdPin,
     pub inner: InnerDisplay,
     backlight: Backlight,
-    partial_buf: &'static mut [Color],
-}
-
-impl Dimensions for Display {
-    fn bounding_box(&self) -> Rectangle {
-        self.inner.bounding_box()
-    }
-}
-
-impl DrawTarget for Display {
-    type Color = <InnerDisplay as DrawTarget>::Color;
-
-    type Error = <InnerDisplay as DrawTarget>::Error;
-
-    fn draw_iter<I>(&mut self, pixels: I) -> Result<(), Self::Error>
-    where
-        I: IntoIterator<Item = embedded_graphics::Pixel<Self::Color>>,
-    {
-        self.inner.draw_iter(pixels)
-    }
-
-    fn fill_contiguous<I>(
-        &mut self,
-        area: &embedded_graphics::primitives::Rectangle,
-        colors: I,
-    ) -> Result<(), Self::Error>
-    where
-        I: IntoIterator<Item = Self::Color>,
-    {
-        self.inner.fill_contiguous(area, colors)
-        // if area.size.width == 0 {
-        //     return Ok(());
-        // }
-
-        // let rows_per_chunk = self.partial_buf.len() / (area.size.width as usize);
-        // let slice = &mut self.partial_buf[..(rows_per_chunk * area.size.width as usize)];
-
-        // // partial fb too small, fallback to non buffered
-        // if rows_per_chunk == 0 {
-        //     self.inner.fill_contiguous(area, colors)
-        // } else {
-        //     let mut colors = colors.into_iter();
-        //     let chunks = area.size.height / rows_per_chunk as u32;
-        //     let remainder = area.size.height % rows_per_chunk as u32;
-
-        //     let chunked_rect = Rectangle::new(
-        //         area.top_left,
-        //         Size::new(area.size.width, rows_per_chunk as u32),
-        //     );
-
-        //     for n in 0..chunks {
-        //         for p in slice.iter_mut() {
-        //             let Some(c) = colors.next() else {
-        //                 return Ok(());
-        //             };
-        //             *p = c;
-        //         }
-
-        //         self.inner.fill_contiguous(
-        //             &chunked_rect.translate(Point::new(0, n as i32)),
-        //             slice.iter().copied(),
-        //         )?;
-        //     }
-
-        //     let remainder_rect = Rectangle::new(
-        //         area.top_left + Point::new(0, chunks as i32 * rows_per_chunk as i32),
-        //         Size::new(area.size.width, remainder),
-        //     );
-
-        //     self.inner.fill_contiguous(&remainder_rect, colors)
-        // }
-    }
-
-    fn fill_solid(
-        &mut self,
-        area: &embedded_graphics::primitives::Rectangle,
-        color: Self::Color,
-    ) -> Result<(), Self::Error> {
-        self.inner.fill_solid(area, color)
-    }
-
-    fn clear(&mut self, color: Self::Color) -> Result<(), Self::Error> {
-        self.inner.clear(color)
-    }
 }
 
 impl Display {
@@ -177,7 +89,6 @@ pub fn init(
     bus: Bus,
     delay: &mut SysDelay,
     backlight: Backlight,
-    partial_buf: &'static mut [Color],
 ) -> Display {
     cs.set_low();
     rd.set_high();
@@ -203,6 +114,5 @@ pub fn init(
         _rd_pin: rd,
         inner: display,
         backlight,
-        partial_buf,
     }
 }

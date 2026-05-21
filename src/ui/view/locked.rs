@@ -1,5 +1,5 @@
 use buoyant::{
-    event::{Event, Key},
+    event::Event,
     focus::{self, FocusAction},
     match_view,
     view::{
