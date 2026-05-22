@@ -3,6 +3,19 @@
 version = 4
 
 [[package]]
+name = "ahash"
+version = "0.8.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a15f179cd60c4584b8a8c596927aadc462e27f2ca70c04e0071964a73ba7a75"
+dependencies = [
+ "cfg-if",
+ "getrandom",
+ "once_cell",
+ "version_check",
+ "zerocopy",
+]
+
+[[package]]
 name = "aho-corasick"
 version = "1.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -52,9 +65,9 @@ dependencies = [
 
 [[package]]
 name = "autocfg"
-version = "1.5.0"
+version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
+checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 
 [[package]]
 name = "az"
@@ -108,9 +121,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "build_script_file_gen"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2cc0e7b3545776f203a13f562db18101e0d81ca5333ce222356958be55f3afa"
+
+[[package]]
 name = "buoyant"
 version = "0.7.0-alpha.3"
-source = "git+https://github.com/simmsb/buoyant?branch=simmsb%2Fbuoyant-with-diffing#5e5a6055c6f6ec9bf0e624d2277da46d19cb8e82"
+source = "git+https://github.com/simmsb/buoyant?branch=simmsb%2Fbuoyant-with-diffing#e82f238ea4ba4563167ca1a272f0aa5c2b7dd0b8"
 dependencies = [
  "bitvec",
  "defmt 1.1.0",
@@ -445,7 +464,7 @@ checksum = "91622ff5e7162018101f2fea40d6ebf4a78bbe5a49736a2020649edf9693679e"
 [[package]]
 name = "embassy-executor"
 version = "0.10.0"
-source = "git+https://github.com/embassy-rs/embassy#50d903882730431c4dfaf198d65eb39f8d7a9519"
+source = "git+https://github.com/embassy-rs/embassy#823abdbe8512721b4797536b9d3151c94c4bbad0"
 dependencies = [
  "cordyceps",
  "cortex-m",
@@ -460,7 +479,7 @@ dependencies = [
 [[package]]
 name = "embassy-executor-macros"
 version = "0.8.0"
-source = "git+https://github.com/embassy-rs/embassy#50d903882730431c4dfaf198d65eb39f8d7a9519"
+source = "git+https://github.com/embassy-rs/embassy#823abdbe8512721b4797536b9d3151c94c4bbad0"
 dependencies = [
  "darling 0.20.11",
  "proc-macro2",
@@ -471,12 +490,12 @@ dependencies = [
 [[package]]
 name = "embassy-executor-timer-queue"
 version = "0.1.0"
-source = "git+https://github.com/embassy-rs/embassy#50d903882730431c4dfaf198d65eb39f8d7a9519"
+source = "git+https://github.com/embassy-rs/embassy#823abdbe8512721b4797536b9d3151c94c4bbad0"
 
 [[package]]
 name = "embassy-futures"
 version = "0.1.2"
-source = "git+https://github.com/embassy-rs/embassy#50d903882730431c4dfaf198d65eb39f8d7a9519"
+source = "git+https://github.com/embassy-rs/embassy#823abdbe8512721b4797536b9d3151c94c4bbad0"
 dependencies = [
  "defmt 1.1.0",
 ]
@@ -484,7 +503,7 @@ dependencies = [
 [[package]]
 name = "embassy-sync"
 version = "0.8.0"
-source = "git+https://github.com/embassy-rs/embassy#50d903882730431c4dfaf198d65eb39f8d7a9519"
+source = "git+https://github.com/embassy-rs/embassy#823abdbe8512721b4797536b9d3151c94c4bbad0"
 dependencies = [
  "cfg-if",
  "critical-section",
@@ -497,7 +516,7 @@ dependencies = [
 [[package]]
 name = "embassy-time"
 version = "0.5.1"
-source = "git+https://github.com/embassy-rs/embassy#50d903882730431c4dfaf198d65eb39f8d7a9519"
+source = "git+https://github.com/embassy-rs/embassy#823abdbe8512721b4797536b9d3151c94c4bbad0"
 dependencies = [
  "cfg-if",
  "critical-section",
@@ -513,7 +532,7 @@ dependencies = [
 [[package]]
 name = "embassy-time-driver"
 version = "0.2.2"
-source = "git+https://github.com/embassy-rs/embassy#50d903882730431c4dfaf198d65eb39f8d7a9519"
+source = "git+https://github.com/embassy-rs/embassy#823abdbe8512721b4797536b9d3151c94c4bbad0"
 dependencies = [
  "document-features",
 ]
@@ -521,7 +540,7 @@ dependencies = [
 [[package]]
 name = "embassy-time-queue-utils"
 version = "0.3.2"
-source = "git+https://github.com/embassy-rs/embassy#50d903882730431c4dfaf198d65eb39f8d7a9519"
+source = "git+https://github.com/embassy-rs/embassy#823abdbe8512721b4797536b9d3151c94c4bbad0"
 dependencies = [
  "embassy-executor-timer-queue",
  "heapless 0.9.3",
@@ -771,6 +790,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "getrandom"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "899def5c37c4fd7b2664648c28120ecec138e4d395b459e5ca34f9cce2dd77fd"
+dependencies = [
+ "cfg-if",
+ "libc",
+ "r-efi",
+ "wasip2",
+]
+
+[[package]]
 name = "glyphr"
 version = "0.5.1"
 source = "git+https://github.com/simmsb/glyphr#63fde3c2eaf629d2138cf86e72b63bb9388d48f8"
@@ -910,6 +941,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d1525a2a28c7f4fa0fc98bb91ae755d1e2d1505079e05539e35bc876b5d65ae9"
 dependencies = [
  "regex-automata",
+]
+
+[[package]]
+name = "material-colors"
+version = "0.5.0"
+source = "git+https://github.com/Aiving/material-colors#3fe7f52cde8c221d9a44dec84bca3706a71bb080"
+dependencies = [
+ "ahash",
+ "indexmap",
+ "serde",
 ]
 
 [[package]]
@@ -1119,6 +1160,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "r-efi"
+version = "5.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69cdb34c158ceb288df11e18b4bd39de994f6657d83847bdffdbd7f346754b0f"
+
+[[package]]
 name = "radium"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1180,6 +1227,7 @@ name = "scooter-display"
 version = "0.1.0"
 dependencies = [
  "at32f4xx-hal",
+ "build_script_file_gen",
  "buoyant",
  "butt-head",
  "chrono",
@@ -1202,6 +1250,7 @@ dependencies = [
  "fugit 0.4.0",
  "glyphr",
  "heapless 0.9.3",
+ "material-colors",
  "mipidsi",
  "no-std-moving-average",
  "panic-probe",
@@ -1560,6 +1609,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasip2"
+version = "1.0.3+wasi-0.2.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "20064672db26d7cdc89c7798c48a0fdfac8213434a1186e5ef29fd560ae223d6"
+dependencies = [
+ "wit-bindgen",
+]
+
+[[package]]
 name = "windows-link"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1591,6 +1649,12 @@ checksum = "df79d97927682d2fd8adb29682d1140b343be4ac0f08fd68b7765d9c059d3945"
 dependencies = [
  "memchr",
 ]
+
+[[package]]
+name = "wit-bindgen"
+version = "0.57.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ebf944e87a7c253233ad6766e082e3cd714b5d03812acc24c318f549614536e"
 
 [[package]]
 name = "wyz"
