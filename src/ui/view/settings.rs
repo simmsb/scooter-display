@@ -6,12 +6,13 @@ use buoyant::{
 };
 use strum::{EnumCount as _, VariantArray};
 
-use crate::
+use crate::{
+    operation::{self, OperationCommand},
     ui::{
         colour::{self, ColorFormat},
         font, keys, state,
-    }
-;
+    },
+};
 
 #[must_use]
 pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<> {
@@ -151,7 +152,24 @@ impl Setting {
     const fn entries(self) -> &'static [SettingEntry] {
         match self {
             Setting::Language => const { &[SettingEntry::new("English", &|_| {})] },
-            Setting::SpeedLimit => const { &[] },
+            Setting::SpeedLimit => {
+                const {
+                    &[
+                        SettingEntry::new("22", &|s| {
+                            s.next_operation_command = Some(OperationCommand::SetSpeedLimit(22));
+                        }),
+                        SettingEntry::new("25", &|s| {
+                            s.next_operation_command = Some(OperationCommand::SetSpeedLimit(25));
+                        }),
+                        SettingEntry::new("35", &|s| {
+                            s.next_operation_command = Some(OperationCommand::SetSpeedLimit(35));
+                        }),
+                        SettingEntry::new("45", &|s| {
+                            s.next_operation_command = Some(OperationCommand::SetSpeedLimit(45));
+                        }),
+                    ]
+                }
+            }
             Setting::Info => const { &[] },
         }
     }

@@ -49,7 +49,11 @@ pub fn start_bluetooth(spawner: SendSpawner, uart: Serial2) {
 #[embassy_executor::task]
 async fn bluetooth_rx(
     rx: Rx<USART2, u8>,
-    cmd_sender: zerocopy_channel::Sender<'static, blocking_mutex::raw::CriticalSectionRawMutex, Command>,
+    cmd_sender: zerocopy_channel::Sender<
+        'static,
+        blocking_mutex::raw::CriticalSectionRawMutex,
+        Command,
+    >,
 ) {
     bluetooth_rx_(rx, cmd_sender).await;
 }
@@ -282,7 +286,11 @@ async fn bluetooth_tx_(
 
 #[embassy_executor::task]
 async fn bluetooth_push_task_(
-    cmd_sender: zerocopy_channel::Sender<'static, blocking_mutex::raw::CriticalSectionRawMutex, Command>,
+    cmd_sender: zerocopy_channel::Sender<
+        'static,
+        blocking_mutex::raw::CriticalSectionRawMutex,
+        Command,
+    >,
 ) {
     bluetooth_push_task(cmd_sender).await;
 }

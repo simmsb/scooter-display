@@ -10,6 +10,8 @@ use crate::{
     can_proto::{DisplaySpeedMode, DisplayThrottle, SpeedMode},
 };
 
+pub const DEFAULT_SPEED_LIMIT: u8 = 22;
+
 pub static STATE_UPDATES: embassy_sync::watch::Watch<
     embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
     (),

@@ -1,9 +1,9 @@
 #![no_std]
 #![no_main]
 
+use at32f4xx_hal::interrupt;
 use defmt::info;
 use embassy_executor::{InterruptExecutor, SendSpawner, Spawner};
-use at32f4xx_hal::interrupt;
 
 #[cfg(feature = "panic-probe")]
 use panic_probe as _;

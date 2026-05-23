@@ -1,22 +1,55 @@
 use buoyant::{
-    event::Event,
+    event::{Event, Key},
     view::{HStack, VStack, View, prelude::*},
 };
+use heapless::HistoryBuf;
 
 use crate::{
     buttons_proto::Buttons,
-    operation::{HeadlightMode, OperationCommand},
+    operation::{self, HeadlightMode, OperationCommand},
     ui::{
         colour::{self, ColorFormat},
         font, keys, state,
     },
 };
 
+#[derive(Default)]
+pub struct State {
+    unlock_history: HistoryBuf<Key, { UNLOCK_SPEED.len() }>,
+}
+
+const UNLOCK_SPEED: [Key; 6] = [
+    keys::UP_CLICK,
+    keys::DOWN_CLICK,
+    keys::DOWN_CLICK,
+    keys::UP_CLICK,
+    keys::DOWN_CLICK,
+    keys::DOWN_CLICK,
+];
+
 #[must_use]
 pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<> {
     VStack::new((header(state), body(state).erase_captures()))
         .with_spacing(4)
         .captures_event(|e, s: &mut state::State| {
+            if let Event::KeyDown(k) = e {
+                s.home_state.unlock_history.write(*k);
+
+                if s.home_state
+                    .unlock_history
+                    .oldest_ordered()
+                    .zip(UNLOCK_SPEED.iter())
+                    .all(|(x, y)| x == y)
+                {
+                    s.no_speeding = false;
+
+                    // TODO: fetch this from settings
+                    s.next_operation_command = Some(OperationCommand::SetSpeedLimit(
+                        45,
+                    ));
+                }
+            }
+
             match e {
                 Event::KeyDown(keys::UP_CLICK) => {
                     s.next_operation_command = s
@@ -35,6 +68,13 @@ pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<
                         .operation_state
                         .as_active()
                         .map(|o| OperationCommand::SetHeadlightMode(o.headlight_mode.next()));
+                }
+                Event::KeyDown(keys::CONFIRM_CLICK) => {
+                    s.no_speeding = true;
+                    s.next_operation_command = Some(OperationCommand::SetSpeedLimit(
+                        operation::DEFAULT_SPEED_LIMIT,
+                    ));
+                    return Some(e.clone());
                 }
                 Event::KeyDown(keys::CONFIRM_HOLD) => {
                     s.page_action = Some(state::PageAction::EnterSettings)
@@ -70,14 +110,12 @@ fn header(state: &state::State) -> impl View<ColorFormat, state::State> + use<> 
     let flash_state = state
         .operation_state
         .as_active()
-        .map(
-            |a| match (a.headlight_mode, a.headlight_on()) {
-                (HeadlightMode::Auto, true) => "☼!",
-                (HeadlightMode::Auto, false) => "☉!",
-                (_, true) => "☼",
-                (_, false) => "☉",
-            },
-        )
+        .map(|a| match (a.headlight_mode, a.headlight_on()) {
+            (HeadlightMode::Auto, true) => "☼!",
+            (HeadlightMode::Auto, false) => "☉!",
+            (_, true) => "☼",
+            (_, false) => "☉",
+        })
         .unwrap_or("☉");
 
     HStack::new((

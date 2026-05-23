@@ -31,6 +31,7 @@ pub struct State {
     pub page: Page,
 
     pub locked_state: super::view::locked::State,
+    pub home_state: super::view::home::State,
     pub settings_state: super::view::settings::State,
 
     pub no_speeding: bool,
@@ -52,6 +53,7 @@ impl State {
         Self {
             page: Default::default(),
             locked_state: Default::default(),
+            home_state: Default::default(),
             settings_state: Default::default(),
             no_speeding: true,
             system_state: crate::system_state::read_state(|s| s.clone()),
