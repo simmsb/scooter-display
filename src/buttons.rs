@@ -135,7 +135,6 @@ async fn buttons_rx_(rx: Serial5, mut power_button: ExtiInput<Pin<'A', 1>, 1>) {
                 buttons.update_from_uart(parsed);
             }
             select::Either::Second(_) => {
-                // TODO: debounce
                 buttons.set(Buttons::POWER, power_button.is_low());
             }
         }

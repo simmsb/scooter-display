@@ -26,6 +26,8 @@ pub mod time_driver;
 #[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod ui;
 
+pub const ON_BENCH: bool = true;
+
 pub mod bluetooth_proto;
 pub mod buttons_proto;
 pub mod can_proto;

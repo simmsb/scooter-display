@@ -5,6 +5,7 @@ use at32f4xx_hal::interrupt;
 use defmt::info;
 use embassy_executor::{InterruptExecutor, SendSpawner, Spawner};
 
+use embassy_time::{Duration, TimeoutError, WithTimeout};
 #[cfg(feature = "panic-probe")]
 use panic_probe as _;
 
@@ -93,10 +94,28 @@ async fn async_main_(
         w
     });
 
-    info!("Setup gpio");
+    defmt::info!("Setup gpio");
     cp.SCB.enable_icache();
 
     let mut delay = Timer::syst(cp.SYST, &clocks).delay();
+
+    let mut power_button = ExtiInput::new(gpioa.pa1.into_input().internal_pull_up(true), exti.ch1);
+
+    if !scooter_display::ON_BENCH {
+        // wait for power button press
+        loop {
+            power_button.wait_for_low().await;
+
+            // ensure it was pressed for two second (time it takes for controller to boot)
+            if let Err(TimeoutError) = power_button
+                .wait_for_high()
+                .with_timeout(Duration::from_secs(2))
+                .await
+            {
+                break;
+            }
+        }
+    }
 
     let mut system_power = gpioa.pa8.into_push_pull_output();
     system_power.set_high();
@@ -161,7 +180,6 @@ async fn async_main_(
         &clocks,
     )
     .unwrap();
-    let power_button = ExtiInput::new(gpioa.pa1.into_input().internal_pull_up(true), exti.ch1);
 
     let adc_config = AdcConfig::default();
     let adc = Adc::adc1(dp.ADC1, true, adc_config);
