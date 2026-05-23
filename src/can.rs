@@ -68,7 +68,12 @@ async fn can_rx_(mut rx: CanRx<'static>) {
                 continue;
             }
             Err(reason) => {
-                defmt::error!("Failed to parse CAN id ({}): {} ({})", id, msg.frame.data(), defmt::Debug2Format(&reason));
+                defmt::error!(
+                    "Failed to parse CAN id ({}): {} ({})",
+                    id,
+                    msg.frame.data(),
+                    defmt::Debug2Format(&reason)
+                );
                 continue;
             }
         };
@@ -93,12 +98,30 @@ async fn can_tx_(mut tx: CanTx<'static>) {
 
     loop {
         let to_send = can_tx_ch.receive().await;
-        let buf = to_send.serialise(&mut buf);
+        let buf = match to_send.serialise(&mut buf) {
+            Ok(buf) => buf,
+            Err(e) => {
+                defmt::error!("Couldn't serialise can frame: {}", defmt::Debug2Format(&e));
+                continue;
+            }
+        };
 
         let frame = if to_send.can_id().is_extended() {
-            Frame::new_extended(to_send.can_id().to_extended_raw(), buf).unwrap()
+            match Frame::new_extended(to_send.can_id().to_extended_raw(), buf) {
+                Ok(f) => f,
+                Err(e) => {
+                    defmt::error!("Couldn't create frame: {}", e);
+                    continue;
+                }
+            }
         } else {
-            Frame::new_standard(to_send.can_id().to_standard_raw(), buf).unwrap()
+            match Frame::new_standard(to_send.can_id().to_standard_raw(), buf) {
+                Ok(f) => f,
+                Err(e) => {
+                    defmt::error!("Couldn't create frame: {}", e);
+                    continue;
+                }
+            }
         };
 
         defmt::trace!("Can TX ({}): {}", to_send.can_id(), buf);

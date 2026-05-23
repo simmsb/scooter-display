@@ -91,19 +91,22 @@ impl OperationState {
     }
 }
 
-#[derive(PartialEq, Eq, defmt::Format, Copy, Clone)]
+#[derive(PartialEq, Eq, defmt::Format, Copy, Clone, rotate_enum::RotateEnum)]
 pub enum HeadlightMode {
-    Auto {
-        /// Headlight will switch on when ambient light reads under this
-        low: AmbientLight,
-
-        /// Headlight will switch off when ambient light reads over this
-        high: AmbientLight,
-
-        currently_on: bool,
-    },
+    Auto,
     On,
     Off,
+}
+
+#[derive(PartialEq, Eq, defmt::Format, Copy, Clone)]
+pub struct HeadlightConfig {
+    /// Headlight will switch on when ambient light reads under this
+    pub low: AmbientLight,
+
+    /// Headlight will switch off when ambient light reads over this
+    pub high: AmbientLight,
+
+    pub auto_on: bool,
 }
 
 #[derive(PartialEq, Eq, defmt::Format, Clone)]
@@ -117,15 +120,12 @@ pub struct ActiveState {
     pub speed_mode: SpeedMode,
 
     pub headlight_mode: HeadlightMode,
+    pub headlight_config: HeadlightConfig,
 }
 
 impl ActiveState {
-    fn headlight_on(&self) -> bool {
-        match self.headlight_mode {
-            HeadlightMode::Auto { currently_on, .. } => currently_on,
-            HeadlightMode::On => true,
-            HeadlightMode::Off => false,
-        }
+    pub fn headlight_on(&self) -> bool {
+        self.headlight_mode == HeadlightMode::On || self.headlight_config.auto_on
     }
 }
 
@@ -140,43 +140,57 @@ async fn operation_task_() {
     let mut send_can_messages_ticker = embassy_time::Ticker::every(Duration::from_millis(100));
 
     let mut throttle_readings = crate::adc::THROTTLE_READINGS.receiver().unwrap();
+    let mut ambient_readings = crate::adc::AMBIENT_READINGS.receiver().unwrap();
 
     let operation_commands = OPERATION_COMMANDS.receiver();
 
     let state_updates = STATE_UPDATES.sender();
 
     loop {
-        match select::select3(
+        match select::select4(
             send_can_messages_ticker.next(),
             throttle_readings
                 .changed()
                 .with_timeout(Duration::from_secs(1)),
+            ambient_readings.changed(),
             operation_commands.receive(),
         )
         .await
         {
-            select::Either3::First(_) => {
+            select::Either4::First(_) => {
                 send_speed_and_throttle_can_messages().await;
             }
-            select::Either3::Second(Ok(throttle)) => {
+            select::Either4::Second(Ok(throttle)) => {
                 update_state(|s| s.update_if_active(|a| a.throttle = throttle));
 
                 state_updates.send(());
             }
-            select::Either3::Second(Err(_)) => {
+            select::Either4::Second(Err(_)) => {
                 panic!("Operation task did not receive throttle update in time");
             }
-            select::Either3::Third(op_cmd) => {
+            select::Either4::Third(ambient) => update_state(|s| {
+                s.update_if_active(|a| {
+                    if a.headlight_mode == HeadlightMode::Auto {
+                        if a.headlight_config.auto_on && ambient < a.headlight_config.low {
+                            a.headlight_config.auto_on = true;
+                        } else if !a.headlight_config.auto_on && ambient > a.headlight_config.high {
+                            a.headlight_config.auto_on = false;
+                        }
+                    }
+                })
+            }),
+            select::Either4::Fourth(op_cmd) => {
                 match op_cmd {
                     OperationCommand::Unlock => update_state(|s| {
                         *s = OperationState::Active(ActiveState {
                             throttle: Throttle(0),
                             speed_limit: 25,
                             speed_mode: SpeedMode::Trip,
-                            headlight_mode: HeadlightMode::Auto {
+                            headlight_mode: HeadlightMode::Auto,
+                            headlight_config: HeadlightConfig {
                                 low: AmbientLight(10),
                                 high: AmbientLight(30),
-                                currently_on: false,
+                                auto_on: false,
                             },
                         })
                     }),
@@ -187,9 +201,11 @@ async fn operation_task_() {
                     OperationCommand::SetSpeedMode(speed_mode) => {
                         update_state(|s| s.update_if_active(|a| a.speed_mode = speed_mode))
                     }
-                    OperationCommand::SetHeadlightMode(headlight_mode) => {
-                        update_state(|s| s.update_if_active(|a| a.headlight_mode = headlight_mode))
-                    }
+                    OperationCommand::SetHeadlightMode(headlight_mode) => update_state(|s| {
+                        s.update_if_active(|a| {
+                            a.headlight_mode = headlight_mode;
+                        })
+                    }),
                 }
 
                 state_updates.send(());

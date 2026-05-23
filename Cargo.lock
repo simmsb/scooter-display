@@ -129,7 +129,7 @@ checksum = "c2cc0e7b3545776f203a13f562db18101e0d81ca5333ce222356958be55f3afa"
 [[package]]
 name = "buoyant"
 version = "0.7.0-alpha.3"
-source = "git+https://github.com/simmsb/buoyant?branch=simmsb%2Fbuoyant-with-diffing#e82f238ea4ba4563167ca1a272f0aa5c2b7dd0b8"
+source = "git+https://github.com/simmsb/buoyant?branch=simmsb%2Fbuoyant-with-diffing#c4dd89b438bc775637ec89322ce0b04ee21a6a05"
 dependencies = [
  "bitvec",
  "defmt 1.1.0",

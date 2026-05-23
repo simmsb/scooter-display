@@ -39,12 +39,6 @@ pub static BT_COMMANDS: embassy_sync::channel::Channel<
 > = embassy_sync::channel::Channel::new();
 
 #[derive(PartialEq, Eq, defmt::Format, Clone)]
-pub struct BatteryLevel {
-    pub from_controller: u8,
-    pub from_battery: u8,
-}
-
-#[derive(PartialEq, Eq, defmt::Format, Clone)]
 pub struct SystemVoltage {
     pub from_controller: u16,
     pub from_battery: u32,
@@ -59,7 +53,8 @@ pub struct BatteryDebug {
 
 #[derive(PartialEq, Eq, defmt::Format, Clone)]
 pub struct BatteryInfo {
-    pub relative_soc: u32,
+    pub level_from_controller: u8,
+    pub relative_soc: u8,
     pub absolute_soc: u32,
     pub relative_soh: u8,
     pub absolute_soh: u32,
@@ -85,7 +80,6 @@ pub struct SystemState {
     pub controller_speed_limit_mode: bool,
 
     pub battery_current: i32,
-    pub battery_level: BatteryLevel,
     pub battery_debug: BatteryDebug,
     pub battery_info: BatteryInfo,
 
@@ -109,16 +103,13 @@ impl SystemState {
         },
         controller_speed_limit_mode: false,
         battery_current: 0,
-        battery_level: BatteryLevel {
-            from_controller: 0,
-            from_battery: 0,
-        },
         battery_debug: BatteryDebug {
             command: 0,
             state: 0,
             estimated_range: 0,
         },
         battery_info: BatteryInfo {
+            level_from_controller: 0,
             relative_soc: 0,
             absolute_soc: 0,
             relative_soh: 0,
@@ -197,7 +188,7 @@ impl SystemState {
     pub fn update_from_can_message(&mut self, msg: &CanMessage) {
         match msg {
             CanMessage::ControllerStatus(ControllerStatus { battery_level, .. }) => {
-                self.battery_level.from_controller = *battery_level;
+                self.battery_info.level_from_controller = *battery_level;
             }
             CanMessage::ControllerSpeed(ControllerSpeed {
                 motor_speed,
@@ -239,7 +230,7 @@ impl SystemState {
                 relative_soc,
                 absolute_soc_mah,
             }) => {
-                self.battery_info.relative_soc = *relative_soc;
+                self.battery_info.relative_soc = *relative_soc as u8;
                 self.battery_info.absolute_soc = *absolute_soc_mah;
             }
             CanMessage::BatteryStateOfHealth(BatteryStateOfHealth {

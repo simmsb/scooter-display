@@ -19,6 +19,12 @@ pub static THROTTLE_READINGS: embassy_sync::watch::Watch<
     4,
 > = embassy_sync::watch::Watch::new();
 
+pub static AMBIENT_READINGS: embassy_sync::watch::Watch<
+    embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
+    AmbientLight,
+    4,
+> = embassy_sync::watch::Watch::new();
+
 #[derive(Clone, Copy)]
 pub enum AdcReading {
     Throttle(Throttle),
@@ -52,7 +58,7 @@ impl Throttle {
     }
 }
 
-#[derive(Eq, PartialEq, Default, defmt::Format, Clone, Copy)]
+#[derive(Eq, PartialEq, PartialOrd, Ord, Default, defmt::Format, Clone, Copy)]
 pub struct AmbientLight(pub u8);
 
 impl AmbientLight {
@@ -96,6 +102,7 @@ async fn adc_task_(
 
     let state_reading_ch = ADC_READINGS.sender();
     let throttle_reading_ch = THROTTLE_READINGS.sender();
+    let ambient_reading_ch = AMBIENT_READINGS.sender();
 
     let mut throttle_averager = MovingAverage::<u16, u32, 4>::new();
     let mut ambient_light_averager = MovingAverage::<u16, u32, 16>::new();
@@ -112,7 +119,9 @@ async fn adc_task_(
                 defmt::trace!("ADC measuring ambient");
                 let val = adc.convert(&ch12, SampleTime::Cycles_480).await;
                 let avg = ambient_light_averager.average(val);
-                state_reading_ch.send(AdcReading::AmbientLight(AmbientLight::from_raw(avg)));
+                let ambient_light = AmbientLight::from_raw(avg);
+                state_reading_ch.send(AdcReading::AmbientLight(ambient_light));
+                ambient_reading_ch.send(ambient_light);
             }
             select::Either::Second(_) => {
                 defmt::trace!("ADC measuring throttle");
@@ -121,11 +130,10 @@ async fn adc_task_(
                 let thr = Throttle::from_raw(avg);
                 state_reading_ch.send(AdcReading::Throttle(thr));
                 throttle_reading_ch.send(thr);
-            }
-            // Either3::Third(_) => {
-            //     defmt::info!("ADC measuring unknown");
-            //     let _val = adc.convert(&ch15, SampleTime::Cycles_480).await;
-            // }
+            } // Either3::Third(_) => {
+              //     defmt::info!("ADC measuring unknown");
+              //     let _val = adc.convert(&ch15, SampleTime::Cycles_480).await;
+              // }
         }
     }
 }

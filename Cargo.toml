@@ -87,16 +87,16 @@ panic = 'abort'
 
 # This is probably just placebo as these libs all work off traits
 [profile.release.package."buoyant"]
-opt-level = 3
+opt-level = 'z'
 
 [profile.release.package."glyphr"]
-opt-level = 3
+opt-level = 'z'
 
 [profile.release.package."deku"]
-opt-level = 3
+opt-level = 'z'
 
 [profile.release.package."embedded-graphics"]
-opt-level = 3
+opt-level = 'z'
 
 [profile.release.package."mipidsi"]
 opt-level = 3

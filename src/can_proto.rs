@@ -217,22 +217,22 @@ impl Sent {
         }
     }
 
-    pub fn serialise<'buf>(&self, buf: &'buf mut [u8; 8]) -> &'buf [u8] {
+    pub fn serialise<'buf>(&self, buf: &'buf mut [u8; 8]) -> Result<&'buf [u8], deku::DekuError> {
         match self {
             Sent::DisplaySpeedMode(display_speed_mode) => {
                 let buf = &mut buf[0..DisplaySpeedMode::SIZE_BYTES.unwrap()];
-                display_speed_mode.to_slice(buf).unwrap();
-                buf
+                display_speed_mode.to_slice(buf)?;
+                Ok(buf)
             }
             Sent::DisplayThrottle(display_throttle) => {
                 let buf = &mut buf[0..DisplayThrottle::SIZE_BYTES.unwrap()];
-                display_throttle.to_slice(buf).unwrap();
-                buf
+                display_throttle.to_slice(buf)?;
+                Ok(buf)
             }
             Sent::DisplayChargeHistoryRequest(display_charge_history_request) => {
                 let buf = &mut buf[0..DisplayChargeHistoryRequest::SIZE_BYTES.unwrap()];
-                display_charge_history_request.to_slice(buf).unwrap();
-                buf
+                display_charge_history_request.to_slice(buf)?;
+                Ok(buf)
             }
         }
     }

@@ -1,7 +1,6 @@
 use buoyant::{
     event::Event,
-    focus::{self, FocusAction},
-    view::{HStack, VStack, View, paginate::PageEvent, prelude::*},
+    view::{HStack, VStack, View, prelude::*},
 };
 
 use crate::{
@@ -15,33 +14,36 @@ use crate::{
 
 #[must_use]
 pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<> {
-    Paginate::new(
-        focus::GROUP_0,
-        |c, evt| {
-            if let PageEvent::Next = evt {
-                c.page_action = Some(state::PageAction::EnterSettings)
+    VStack::new((header(state), body(state).erase_captures()))
+        .with_spacing(4)
+        .captures_event(|e, s: &mut state::State| {
+            match e {
+                Event::KeyDown(keys::UP_CLICK) => {
+                    s.next_operation_command = s
+                        .operation_state
+                        .as_active()
+                        .map(|o| OperationCommand::SetSpeedMode(o.speed_mode.increase()));
+                }
+                Event::KeyDown(keys::DOWN_CLICK) => {
+                    s.next_operation_command = s
+                        .operation_state
+                        .as_active()
+                        .map(|o| OperationCommand::SetSpeedMode(o.speed_mode.decrease()));
+                }
+                Event::KeyDown(keys::POWER_CLICK) => {
+                    s.next_operation_command = s
+                        .operation_state
+                        .as_active()
+                        .map(|o| OperationCommand::SetHeadlightMode(o.headlight_mode.next()));
+                }
+                Event::KeyDown(keys::CONFIRM_HOLD) => {
+                    s.page_action = Some(state::PageAction::EnterSettings)
+                }
+                _ => return Some(e.clone()),
             }
-        },
-        Paginate::new(
-            focus::GROUP_1,
-            |c, evt| {
-                c.next_operation_command = c.operation_state.as_active().map(|o| {
-                    OperationCommand::SetSpeedMode(match evt {
-                        buoyant::view::paginate::PageEvent::Next => o.speed_mode.increase(),
-                        buoyant::view::paginate::PageEvent::Previous => o.speed_mode.decrease(),
-                    })
-                })
-            },
-            VStack::new((header(state), body(state).erase_captures())).with_spacing(4),
-        ),
-    )
-    .map_event(|evt, _state: &mut ()| match evt {
-        Event::KeyDown(keys::UP_CLICK) => Some(FocusAction::Next.into_event(focus::GROUP_1)),
-        Event::KeyDown(keys::DOWN_CLICK) => Some(FocusAction::Previous.into_event(focus::GROUP_1)),
-        // A bit hacky, but it's local
-        Event::KeyDown(keys::CONFIRM_HOLD) => Some(FocusAction::Next.into_event(focus::GROUP_0)),
-        _ => Some(evt.clone()),
-    })
+
+            None
+        })
 }
 
 // Things we need to show:
@@ -68,17 +70,14 @@ fn header(state: &state::State) -> impl View<ColorFormat, state::State> + use<> 
     let flash_state = state
         .operation_state
         .as_active()
-        .map(|a| match a.headlight_mode {
-            HeadlightMode::Auto {
-                currently_on: true, ..
-            } => "☼!",
-            HeadlightMode::Auto {
-                currently_on: false,
-                ..
-            } => "☉!",
-            HeadlightMode::On => "☼",
-            HeadlightMode::Off => "☉",
-        })
+        .map(
+            |a| match (a.headlight_mode, a.headlight_on()) {
+                (HeadlightMode::Auto, true) => "☼!",
+                (HeadlightMode::Auto, false) => "☉!",
+                (_, true) => "☼",
+                (_, false) => "☉",
+            },
+        )
         .unwrap_or("☉");
 
     HStack::new((
