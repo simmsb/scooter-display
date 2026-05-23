@@ -96,9 +96,7 @@ pub struct State {
 #[must_use]
 pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<> {
     VStack::new((
-        Text::new("Enter PIN", &font::B612_REGULAR)
-            .multiline_text_alignment(HorizontalTextAlignment::Center)
-            .foreground_color(colour::ON_BACKGROUND),
+        Text::new("Enter PIN", &font::B612_REGULAR).foreground_color(colour::ON_BACKGROUND),
         Lens::new(pin_entry(&state.locked_state), |s: &mut state::State| {
             &mut s.locked_state
         }),
@@ -108,7 +106,7 @@ pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<
                 // than one user :)
                 if state.locked_state.pin
                     == [PinDigit::D0, PinDigit::D0, PinDigit::D0, PinDigit::D0]
-                    // == [PinDigit::D2, PinDigit::D7, PinDigit::D0, PinDigit::D8]
+                // == [PinDigit::D2, PinDigit::D7, PinDigit::D0, PinDigit::D8]
                 {
                     state.locked_state.pin = Default::default();
                     state.next_operation_command = Some(OperationCommand::Unlock);
@@ -116,7 +114,6 @@ pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<
             },
             |bs| {
                 Text::new("Confirm", &font::B612_REGULAR)
-                    .multiline_text_alignment(HorizontalTextAlignment::Center)
                     .padding(Edges::All, 4)
                     .foreground_color(if bs.is_focused() {
                         colour::ON_PRIMARY
@@ -138,7 +135,6 @@ pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<
     .with_alignment(HorizontalAlignment::Center)
     .flex_infinite_width(HorizontalAlignment::Center)
     .with_infinite_max_height()
-    .focus_touches()
     .map_event(|event, _: &mut ()| match event {
         Event::KeyDown(key) => match *key {
             keys::UP_CLICK => Some(FocusAction::Previous.into_event(focus::GROUP_0)),

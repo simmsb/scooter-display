@@ -44,6 +44,7 @@ no-std-moving-average = "0.3.0"
 panic-reset = { version = "0.1.1", optional = true }
 butt-head = { version = "0.2.0", features = ["defmt"] }
 rotate-enum = "0.1.2"
+strum = { version = "0.28.0", default-features = false, features = ["derive"] }
 
 [features]
 test = ["deku/descriptive-errors"]

@@ -1,4 +1,15 @@
 glyphr::generate_font! {
+    name: B612_SMALL,
+    path: "B612-Regular.ttf",
+    size: 18,
+    characters: "0-9A-Za-z! /:,%",
+    format: Bitmap {
+        spread: 10.0,
+        padding: 0
+    }
+}
+
+glyphr::generate_font! {
     name: B612_REGULAR,
     path: "B612-Regular.ttf",
     size: 24,

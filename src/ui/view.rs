@@ -13,8 +13,10 @@ pub fn root_view(state: &super::State) -> impl View<colour::ColorFormat, super::
     match_view!((state.operation_state.is_locked(), state.page), {
         (true, _) => locked::view(state),
         (false, Page::Home) => home::view(state),
-        (false, Page::Settings) => EmptyView,
+        (false, Page::Settings) => settings::view(state),
     })
-    .background_color(colour::BACKGROUND, RoundedRectangle::new(8))
     .padding(Edges::All, 5)
+    .background_color(colour::BACKGROUND, RoundedRectangle::new(8))
+    // this padding might be needed if the display isn't full size
+    // .padding(Edges::Top, 5)
 }

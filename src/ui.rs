@@ -6,6 +6,7 @@ use buoyant::{
 };
 use embassy_futures::select;
 use embassy_time::{Instant, Timer};
+use embedded_graphics::pixelcolor::RgbColor;
 
 use crate::{
     buttons::{BHDuration, BHInstant, BUTTON_EVENTS, Button},
@@ -174,9 +175,10 @@ async fn ui_(mut display: crate::display::Display) {
             defmt::trace!("Redrawing");
 
             // target.clear(Rgb565::RED);
-            let _start = Instant::now();
+            // let _start = Instant::now();
             app.render_animated_diffed(&mut target, &colour::BLACK, &mut diffing_mem);
             // app.render_only_target(&mut target, &colour::BACKGROUND);
+            // app.draw_focus_overlay(&mut target, colour::ColorFormat::RED, 2);
 
             immediate_redraw = true;
 
