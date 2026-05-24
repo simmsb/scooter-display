@@ -27,11 +27,12 @@ dependencies = [
 [[package]]
 name = "at32f4xx-hal"
 version = "0.0.1"
-source = "git+https://github.com/simmsb/at32f4xx-hal#6b7abe62b67ffa78b4fee64f4d3e3ab159e8c417"
+source = "git+https://github.com/simmsb/at32f4xx-hal#8d0c05a016bb80bc34c5e28902708bd818da8853"
 dependencies = [
  "at32f4xx-pac",
  "bit_field",
  "bitflags 2.11.1",
+ "chrono",
  "cortex-m",
  "cortex-m-rt",
  "critical-section",
@@ -1054,6 +1055,10 @@ name = "once_cell"
 version = "1.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
+dependencies = [
+ "critical-section",
+ "portable-atomic",
+]
 
 [[package]]
 name = "panic-probe"
@@ -1259,6 +1264,7 @@ dependencies = [
  "material-colors",
  "mipidsi",
  "no-std-moving-average",
+ "once_cell",
  "panic-probe",
  "panic-reset",
  "rotate-enum",

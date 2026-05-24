@@ -39,12 +39,13 @@ embedded-hal-nb = "1.0.0"
 crc = "3.4.0"
 deku = { version = "0.20.3", default-features = false, features = ["bits"] }
 embassy-futures = "0.1.2"
-chrono = { version = "0.4.44", default-features = false, features = ["defmt"] }
 no-std-moving-average = "0.3.0"
 panic-reset = { version = "0.1.1", optional = true }
 butt-head = { version = "0.2.0", features = ["defmt"] }
 rotate-enum = "0.1.2"
 strum = { version = "0.28.0", default-features = false, features = ["derive"] }
+chrono = { version = "0.4.44", default-features = false, features = ["defmt"] }
+once_cell = { version = "1.21.4", default-features = false, features = ["critical-section", "portable-atomic"] }
 
 [features]
 test = ["deku/descriptive-errors"]

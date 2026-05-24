@@ -25,6 +25,8 @@ pub mod system_state;
 pub mod time_driver;
 #[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod ui;
+#[cfg(all(target_arch = "arm", target_os = "none"))]
+pub mod rtc;
 
 pub const ON_BENCH: bool = true;
 

@@ -5,7 +5,7 @@ use buoyant::{
     view::ViewLayout,
 };
 use embassy_futures::select;
-use embassy_time::{Instant, Timer};
+use embassy_time::{Duration, Instant, Ticker, Timer};
 use embedded_graphics::pixelcolor::RgbColor;
 
 use crate::{
@@ -100,13 +100,15 @@ async fn ui_(mut display: crate::display::Display) {
     let mut op_state_updates = operation::STATE_UPDATES.receiver().unwrap();
     let mut sys_state_updates = system_state::STATE_UPDATES.receiver().unwrap();
 
+    let mut ticker = Ticker::every(Duration::from_millis(500));
+
     loop {
         let event = if !immediate_redraw {
             match select::select4(
                 button_events.next_message_pure(),
                 op_state_updates.changed(),
                 sys_state_updates.changed(),
-                Timer::after_millis(500),
+                ticker.next(),
             )
             .await
             {

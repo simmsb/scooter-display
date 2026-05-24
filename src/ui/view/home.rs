@@ -2,6 +2,7 @@ use buoyant::{
     event::{Event, Key},
     view::{HStack, VStack, View, prelude::*},
 };
+use chrono::Timelike;
 use heapless::HistoryBuf;
 
 use crate::{
@@ -44,9 +45,7 @@ pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<
                     s.no_speeding = false;
 
                     // TODO: fetch this from settings
-                    s.next_operation_command = Some(OperationCommand::SetSpeedLimit(
-                        45,
-                    ));
+                    s.next_operation_command = Some(OperationCommand::SetSpeedLimit(45));
                 }
             }
 
@@ -118,16 +117,26 @@ fn header(state: &state::State) -> impl View<ColorFormat, state::State> + use<> 
         })
         .unwrap_or("☉");
 
+    let time = crate::rtc::get_datetime().time();
+
     HStack::new((
         Text::new(speed_mode, &font::B612_REGULAR)
             .foreground_color(colour::ON_BACKGROUND)
             .flex_infinite_width(HorizontalAlignment::Leading),
         Text::new(flash_state, &font::ICONS)
             .foreground_color(colour::ON_BACKGROUND)
-            .flex_infinite_width(HorizontalAlignment::Center),
-        Text::new("Clock", &font::B612_REGULAR)
-            .foreground_color(colour::ON_BACKGROUND)
-            .flex_infinite_width(HorizontalAlignment::Trailing),
+            ,
+        Text::new_fmt::<16>(
+            format_args!(
+                "{:02}:{:02}:{:02}",
+                time.hour() as u8,
+                time.minute() as u8,
+                time.second() as u8
+            ),
+            &font::B612_REGULAR,
+        )
+        .foreground_color(colour::ON_BACKGROUND)
+        .flex_infinite_width(HorizontalAlignment::Trailing),
     ))
     .with_alignment(VerticalAlignment::Top)
     .padding(Edges::All, 10)

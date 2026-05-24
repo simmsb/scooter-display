@@ -2,7 +2,6 @@
 #![no_main]
 
 use at32f4xx_hal::interrupt;
-use defmt::info;
 use embassy_executor::{InterruptExecutor, SendSpawner, Spawner};
 
 use embassy_time::{Duration, TimeoutError, WithTimeout};
@@ -30,7 +29,7 @@ use defmt_rtt as _;
 use static_cell::StaticCell;
 
 use scooter_display::{
-    adc, bluetooth, buttons, can, display, operation, system_state, time_driver, ui,
+    adc, bluetooth, buttons, can, display, operation, rtc, system_state, time_driver, ui,
 };
 
 static EXECUTOR_HIGH: InterruptExecutor = InterruptExecutor::new();
@@ -62,11 +61,11 @@ async fn async_main(
 async fn async_main_(
     low_spawner: Spawner,
     high_spawner: SendSpawner,
-    dp: Peripherals,
+    mut dp: Peripherals,
     mut cp: cortex_m::Peripherals,
     clocks: Clocks,
 ) {
-    info!("Yep");
+    defmt::info!("Main stage startup begins");
 
     // IOMUX clocks start off and hal doesn't know to enable them
     at32f4xx_hal::pac::IOMUX::enable(&dp.CRM);
@@ -94,7 +93,6 @@ async fn async_main_(
         w
     });
 
-    defmt::info!("Setup gpio");
     cp.SCB.enable_icache();
 
     let mut delay = Timer::syst(cp.SYST, &clocks).delay();
@@ -102,6 +100,7 @@ async fn async_main_(
     let mut power_button = ExtiInput::new(gpioa.pa1.into_input().internal_pull_up(true), exti.ch1);
 
     if !scooter_display::ON_BENCH {
+        defmt::info!("Waiting for power press");
         // wait for power button press
         loop {
             power_button.wait_for_low().await;
@@ -117,8 +116,11 @@ async fn async_main_(
         }
     }
 
+    defmt::info!("Starting peripheral init");
     let mut system_power = gpioa.pa8.into_push_pull_output();
     system_power.set_high();
+
+    rtc::init_rtc(dp.ERTC, &mut dp.CRM, &mut dp.PWC);
 
     let backlight_pwm_pin = gpioa.pa15.into_alternate().speed(Speed::High);
     let mut backlight_pwm = dp
@@ -197,9 +199,11 @@ async fn async_main_(
     high_spawner.spawn(adc::adc_task(adc, adc_ch12, adc_ch13, adc_ch15).unwrap());
     high_spawner.spawn(operation::operation_task().unwrap());
 
+    defmt::info!("Startup complete");
+
     loop {
         defmt::debug!("Tick");
-        embassy_time::Timer::after_secs(5).await;
+        embassy_time::Timer::after_secs(10).await;
     }
 }
 
@@ -230,7 +234,7 @@ fn main() -> ! {
         time_driver::init(cs, &clocks);
     });
 
-    info!("Setup time driver");
+    defmt::info!("Setup time driver");
 
     static EXECUTOR: StaticCell<embassy_executor::Executor> = StaticCell::new();
     let executor = EXECUTOR.init(embassy_executor::Executor::new());
