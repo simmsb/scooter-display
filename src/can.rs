@@ -3,7 +3,10 @@ use embassy_executor::SendSpawner;
 use embassy_futures::select;
 use embassy_time::Duration;
 
-use crate::can_proto::{self, DisplayChargeHistoryRequest};
+use crate::{
+    can_proto::{self, DisplayChargeHistoryRequest},
+    no_inline_future::NoInlineFutExt,
+};
 
 pub static CAN_TX_BUS: embassy_sync::channel::Channel<
     embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
@@ -34,7 +37,7 @@ async fn can_rx_(mut rx: CanRx<'static>) {
     let mut errors = 0;
 
     loop {
-        let msg = match rx.read().await {
+        let msg = match rx.read().no_inline().await {
             Ok(msg) => msg,
             Err(at32f4xx_hal::can::enums::BusError::BitDominant) => {
                 // bitdominant happens when controller is not powered
@@ -80,7 +83,7 @@ async fn can_rx_(mut rx: CanRx<'static>) {
 
         defmt::trace!("Can RX: {}", parsed);
 
-        state_can_ch.send(parsed).await;
+        state_can_ch.send(parsed).no_inline().await;
     }
 }
 
@@ -97,7 +100,7 @@ async fn can_tx_(mut tx: CanTx<'static>) {
     let mut buf: [u8; 8] = [0u8; 8];
 
     loop {
-        let to_send = can_tx_ch.receive().await;
+        let to_send = can_tx_ch.receive().no_inline().await;
         let buf = match to_send.serialise(&mut buf) {
             Ok(buf) => buf,
             Err(e) => {
@@ -126,7 +129,7 @@ async fn can_tx_(mut tx: CanTx<'static>) {
 
         defmt::trace!("Can TX ({}): {}", to_send.can_id(), buf);
 
-        let _txstatus = tx.write(&frame).await;
+        let _txstatus = tx.write(&frame).no_inline().await;
     }
 }
 
@@ -151,6 +154,7 @@ async fn can_periodic_() {
             request_battery_charge_history_ticker.next(),
             todo_ticker.next(),
         )
+        .no_inline()
         .await
         {
             select::Either::First(_) => {
@@ -158,6 +162,7 @@ async fn can_periodic_() {
                     .send(can_proto::Sent::DisplayChargeHistoryRequest(
                         DisplayChargeHistoryRequest,
                     ))
+                    .no_inline()
                     .await;
             }
             select::Either::Second(_) => {}

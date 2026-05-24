@@ -284,6 +284,12 @@ pub enum OperationHandleCommand {
 
     #[deku(id = 0x12)]
     FreeTextFrameSize(u8),
+
+    #[deku(id = 0x50)]
+    SyncRTC {
+        #[deku(endian = "little")]
+        timestamp_millis: i64,
+    }
 }
 
 impl EndpointValue for OperationHandleCommand {

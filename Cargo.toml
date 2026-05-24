@@ -46,6 +46,7 @@ rotate-enum = "0.1.2"
 strum = { version = "0.28.0", default-features = false, features = ["derive"] }
 chrono = { version = "0.4.44", default-features = false, features = ["defmt"] }
 once_cell = { version = "1.21.4", default-features = false, features = ["critical-section", "portable-atomic"] }
+pin-project-lite = "0.2.17"
 
 [features]
 test = ["deku/descriptive-errors"]

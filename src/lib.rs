@@ -27,6 +27,7 @@ pub mod time_driver;
 pub mod ui;
 #[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod rtc;
+pub mod no_inline_future;
 
 pub const ON_BENCH: bool = true;
 

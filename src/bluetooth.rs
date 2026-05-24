@@ -3,12 +3,17 @@
 // - tx: GPIOA 2 (bit 0x4) (`USART2_TX`)
 // - 57600 baud
 
-use crate::bluetooth_proto::*;
+use crate::{
+    bluetooth_proto::*,
+    no_inline_future::NoInlineFutExt as _,
+    operation::{OPERATION_COMMANDS, OperationCommand},
+};
 use at32f4xx_hal::{
     pac::USART2,
     serial::Serial2,
     uart::{Rx, Tx},
 };
+use chrono::DateTime;
 use deku::DekuContainerRead as _;
 use embassy_executor::SendSpawner;
 use embassy_sync::{blocking_mutex, zerocopy_channel};
@@ -71,7 +76,10 @@ async fn bluetooth_rx_(
     loop {
         let mut buf = [0; 48];
 
-        let buf = match crate::framed_reader::read_framed(&mut rx, 0x55, &mut buf).await {
+        let buf = match crate::framed_reader::read_framed(&mut rx, 0x55, &mut buf)
+            .no_inline()
+            .await
+        {
             Ok(buf) => buf,
             Err(e) => {
                 defmt::warn!("Framed read error bt rx: {}", e);
@@ -105,7 +113,7 @@ async fn bluetooth_rx_(
 
         defmt::trace!("Bluetooth RX: {} {}", command, buf);
 
-        let mut slot = cmd_sender.send().await;
+        let mut slot = cmd_sender.send().no_inline().await;
         *slot = command;
         slot.send_done();
 
@@ -156,6 +164,7 @@ async fn bluetooth_tx_(
             cmd_receiver.receive(),
             ext_cmd_receiver.receive(),
         )
+        .no_inline()
         .await
         {
             embassy_futures::select::Either::First(a) => a,
@@ -192,7 +201,8 @@ async fn bluetooth_tx_(
             Command::SystemStatusUnknown(_) => {
                 Some(Response::SystemStatusUnknown(SystemStatusUnknownResponse))
             }
-            Command::OperationCommand(_) => {
+            Command::OperationCommand(cmd) => {
+                handle_operation_command(cmd).no_inline().await;
                 Some(Response::OperationCommand(OperationCommandResponse))
             }
             Command::DeviceState(_) => Some(Response::DeviceState(DeviceStateResponse {
@@ -279,8 +289,46 @@ async fn bluetooth_tx_(
 
             defmt::trace!("BT Response: {} {}", resp, to_send);
 
-            let _ = tx.write_all(to_send).await;
+            let _ = tx.write_all(to_send).no_inline().await;
         }
+    }
+}
+
+async fn handle_operation_command(cmd: &OperationHandleCommand) {
+    let op_command = match cmd {
+        OperationHandleCommand::SetPoweredOn => None,
+        OperationHandleCommand::SetUnlocked(unlock) => Some(if *unlock {
+            OperationCommand::Unlock
+        } else {
+            OperationCommand::Lock
+        }),
+        OperationHandleCommand::SetLightsOn(on) => {
+            Some(OperationCommand::SetHeadlightMode(if *on {
+                crate::operation::HeadlightMode::On
+            } else {
+                crate::operation::HeadlightMode::Off
+            }))
+        }
+        OperationHandleCommand::SetDrivingMode(mode) => {
+            Some(OperationCommand::SetSpeedMode(match mode {
+                0 => crate::can_proto::SpeedMode::Walk,
+                1 => crate::can_proto::SpeedMode::Eco,
+                2 => crate::can_proto::SpeedMode::Trip,
+                _ => crate::can_proto::SpeedMode::Sport,
+            }))
+        }
+        OperationHandleCommand::SyncRTC { timestamp_millis } => {
+            if let Some(dt) = DateTime::from_timestamp_millis(*timestamp_millis) {
+                crate::rtc::set_datetime(dt.naive_utc());
+            }
+
+            None
+        }
+        _ => None,
+    };
+
+    if let Some(op_command) = op_command {
+        OPERATION_COMMANDS.send(op_command).no_inline().await;
     }
 }
 
@@ -309,23 +357,25 @@ async fn bluetooth_push_task(
         loop {
             ticker.next().await;
 
-            let mut slot = cmd_sender.send().await;
+            let mut slot = cmd_sender.send().no_inline().await;
             *slot = Command::DeviceState(DeviceStateCommand);
             slot.send_done();
 
-            let mut slot = cmd_sender.send().await;
+            let mut slot = cmd_sender.send().no_inline().await;
             *slot = Command::BatteryAndActiveTime(BatteryAndActiveTimeCommand);
             slot.send_done();
 
-            let mut slot = cmd_sender.send().await;
+            let mut slot = cmd_sender.send().no_inline().await;
             *slot = Command::DriveModeHistory(DriveModeHistoryCommand);
             slot.send_done();
 
-            let mut slot = cmd_sender.send().await;
+            let mut slot = cmd_sender.send().no_inline().await;
             *slot = Command::SystemStatus(SystemStatusCommand);
             slot.send_done();
         }
     };
 
-    embassy_futures::join::join_array([device_state_ticker]).await;
+    embassy_futures::join::join_array([device_state_ticker])
+        .no_inline()
+        .await;
 }

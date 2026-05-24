@@ -1267,6 +1267,7 @@ dependencies = [
  "once_cell",
  "panic-probe",
  "panic-reset",
+ "pin-project-lite",
  "rotate-enum",
  "static_cell",
  "strum",
