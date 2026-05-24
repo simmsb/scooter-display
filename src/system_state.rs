@@ -60,6 +60,7 @@ pub struct BatteryInfo {
     pub absolute_soh: u32,
     pub capacity: u16,
     pub charged: bool,
+    pub charging: bool,
     pub temperature: i16,
 }
 
@@ -116,6 +117,7 @@ impl SystemState {
             absolute_soh: 0,
             capacity: 0,
             charged: false,
+            charging: false,
             temperature: 0,
         },
         throttle: Throttle::INITIAL,
@@ -243,10 +245,12 @@ impl SystemState {
             CanMessage::BatteryCapacityTemp(BatteryCapacityTemp {
                 capacity_mah,
                 battery_charged,
+                battery_charging,
                 battery_temp,
             }) => {
                 self.battery_info.capacity = *capacity_mah;
                 self.battery_info.charged = *battery_charged;
+                self.battery_info.charging = *battery_charging;
                 self.battery_info.temperature = *battery_temp;
             }
             CanMessage::BatteryChargeHistoryEntry(BatteryChargeHistoryEntry {

@@ -508,10 +508,10 @@ pub struct BatteryCapacityTemp {
     /// Battery charged flag
     #[deku(pad_bytes_before = "2")]
     pub battery_charged: bool,
+    pub battery_charging: bool,
 
     /// Stored as celcius * 10
     #[deku(
-        pad_bytes_before = "1",
         map = "|x: u16| -> Result<_, deku::DekuError> { Ok(x as i16 - 2731) }",
         writer = "(self.battery_temp + 2731).to_writer(deku::writer, ())"
     )]

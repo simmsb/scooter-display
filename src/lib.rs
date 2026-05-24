@@ -4,6 +4,7 @@
 #![feature(adt_const_params, unsized_const_params)]
 #![cfg_attr(not(test), feature(integer_widen_truncate))]
 #![feature(mem_conjure_zst)]
+#![feature(integer_cast_extras)]
 
 #[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod adc;

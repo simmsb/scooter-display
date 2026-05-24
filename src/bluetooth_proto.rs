@@ -247,7 +247,7 @@ pub enum OperationHandleCommand {
     SetPoweredOn,
 
     #[deku(id = 0x2)]
-    SetUnlocked(bool),
+    SetLocked(bool),
 
     #[deku(id = 0x3)]
     SetLightsOn(bool),

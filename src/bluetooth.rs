@@ -6,7 +6,8 @@
 use crate::{
     bluetooth_proto::*,
     no_inline_future::NoInlineFutExt as _,
-    operation::{OPERATION_COMMANDS, OperationCommand},
+    operation::{self, OPERATION_COMMANDS, OperationCommand},
+    system_state,
 };
 use at32f4xx_hal::{
     pac::USART2,
@@ -188,16 +189,20 @@ async fn bluetooth_tx_(
                     display_firmware_version: BluetoothString::new("3.5.5"),
                 }))
             }
-            Command::SystemStatus(_) => Some(Response::SystemStatus(SystemStatusResponse {
-                battery_pct: 99,
-                some_pct_str: BluetoothString::new("1.2.0"),
-                unknown: 36,
-                absolute_soh: 32,
-                charge_state: 48,
-                unknown_2: 57,
-                voltage: 48,
-                current: 16,
-            })),
+            Command::SystemStatus(_) => system_state::read_state(|s| {
+                Some(Response::SystemStatus(SystemStatusResponse {
+                    battery_pct: s.battery_info.relative_soc,
+                    some_pct_str: BluetoothString::new("1.2.0"),
+                    unknown: 36,
+                    absolute_soh: s.battery_info.absolute_soh as u16,
+                    charge_state: 48,
+                    unknown_2: 57,
+                    voltage: s.system_voltage.from_battery as u16,
+                    current: (s.battery_current.saturating_abs() / 100)
+                        .saturating_cast_unsigned()
+                        .saturating_truncate(),
+                }))
+            }),
             Command::SystemStatusUnknown(_) => {
                 Some(Response::SystemStatusUnknown(SystemStatusUnknownResponse))
             }
@@ -205,24 +210,39 @@ async fn bluetooth_tx_(
                 handle_operation_command(cmd).no_inline().await;
                 Some(Response::OperationCommand(OperationCommandResponse))
             }
-            Command::DeviceState(_) => Some(Response::DeviceState(DeviceStateResponse {
-                temperature_high: false,
-                temperature_low: false,
-                charging: false,
-                lights_on: true,
-                locked: false,
-                powered_on: true,
-                speed: 0,
-                power_output: 0,
-                eco_range: 999,
-                tour_range: 999,
-                sport_range: 999,
-                range_factor: 100,
-                throttle: 0,
-                driving_mode: 3,
-                error_code: 0,
-                find_my_status: 0,
-            })),
+            Command::DeviceState(_) => {
+                let (lights_on, locked, driving_mode) = operation::read_state(|s| {
+                    (match s {
+                        operation::OperationState::Locked => (false, true, 0),
+                        operation::OperationState::Active(a) => {
+                            (a.headlight_on(), false, a.speed_mode as u8)
+                        }
+                    })
+                });
+
+                system_state::read_state(|s| {
+                    Some(Response::DeviceState(DeviceStateResponse {
+                        temperature_high: false,
+                        temperature_low: false,
+                        charging: s.battery_info.charging,
+                        lights_on,
+                        locked,
+                        powered_on: true,
+                        speed: s.motor_speed / 10,
+                        power_output: (s.battery_current.saturating_abs() / 100)
+                            .saturating_cast_unsigned()
+                            .saturating_truncate(),
+                        eco_range: 999,
+                        tour_range: 999,
+                        sport_range: 999,
+                        range_factor: 100,
+                        throttle: s.throttle.for_bluetooth(),
+                        driving_mode,
+                        error_code: 0,
+                        find_my_status: 0,
+                    }))
+                })
+            }
             Command::Odometer(_) => None,
             Command::SettingsHandler(_) => Some(Response::SettingsHandler(SettingsHandlerResponse)),
             Command::SettingsReport(_) => Some(Response::SettingsReport(SettingsReportResponse {
@@ -297,10 +317,10 @@ async fn bluetooth_tx_(
 async fn handle_operation_command(cmd: &OperationHandleCommand) {
     let op_command = match cmd {
         OperationHandleCommand::SetPoweredOn => None,
-        OperationHandleCommand::SetUnlocked(unlock) => Some(if *unlock {
-            OperationCommand::Unlock
-        } else {
+        OperationHandleCommand::SetLocked(locked) => Some(if *locked {
             OperationCommand::Lock
+        } else {
+            OperationCommand::Unlock
         }),
         OperationHandleCommand::SetLightsOn(on) => {
             Some(OperationCommand::SetHeadlightMode(if *on {
@@ -352,7 +372,7 @@ async fn bluetooth_push_task(
 ) {
     let device_state_ticker = async {
         // make this more frequent in real life
-        let mut ticker = Ticker::every(Duration::from_secs(10));
+        let mut ticker = Ticker::every(Duration::from_secs(1));
 
         loop {
             ticker.next().await;

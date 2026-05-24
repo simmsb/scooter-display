@@ -37,6 +37,9 @@ pub struct Throttle(pub u16);
 impl Throttle {
     pub const INITIAL: Self = Self(0);
 
+    // value we report to the controller when throttle is fully depressed
+    const OUT_MAX: u32 = 450;
+
     fn from_raw(raw: u16) -> Self {
         // value the adc reads when throttle is fully depressed
         const MAX_RAW: u32 = 2820;
@@ -44,17 +47,23 @@ impl Throttle {
         // value the adc reads when the throttle is unpressed
         const MIN_RAW: u32 = 730;
 
-        // value we report to the controller when throttle is fully depressed
-        const OUT_MAX: u32 = 450;
-
         Self(
             (raw as u32)
                 .clamp(MIN_RAW, MAX_RAW)
                 .saturating_sub(MIN_RAW)
-                .saturating_mul(OUT_MAX)
+                .saturating_mul(Self::OUT_MAX)
                 .saturating_div(MAX_RAW - MIN_RAW)
                 .saturating_truncate(),
         )
+    }
+
+    pub(crate) fn for_bluetooth(&self) -> u8 {
+        const MAX_BT: u32 = 146;
+
+        (self.0 as u32)
+            .saturating_mul(MAX_BT)
+            .saturating_div(Self::OUT_MAX)
+            .saturating_truncate()
     }
 }
 
