@@ -1,61 +1,193 @@
-use cfg_noodle::{
-    StorageList, StorageListNode,
-    minicbor::{self, CborLen, Decode, Encode},
-    mutex::raw_impls::cs::CriticalSectionRawMutex,
-    sequential_storage::cache::{NoCache, PagePointerCache},
+use at32f4xx_hal::flash::FlashExt;
+use embassy_time::Timer;
+use embedded_storage_async::nor_flash::{NorFlash, ReadNorFlash};
+use minicbor::{Decoder, encode::write::Cursor};
+use sequential_storage::{
+    cache::{KeyCacheImpl, NoCache},
+    map::{MapConfig, MapStorage, SerializationError, Value},
 };
-use static_cell::ConstStaticCell;
 
-const SECTOR_SIZE: u32 = 4096;
-const PAGE_SIZE: u32 = 256;
+use crate::cfg::{HeadlightMode, SpeedLimit, SpeedMode, Storable, UnlockCode};
 
-// give ourselves 128KB of the 8MB flash.
-const TOTAL_SIZE: u32 = 128 * 1024;
-const PAGE_COUNT: u32 = TOTAL_SIZE / SECTOR_SIZE;
-
-// start of flash contains some images used by original firmware, but it is a
-// 128mib flash with everything after 0x400000 free.
-const BASE_ADDR: u32 = 0x500000;
-
-pub static LIST: StorageList<CriticalSectionRawMutex, 3> = StorageList::new();
-
-pub static BUF: ConstStaticCell<[u8; 64]> = ConstStaticCell::new([0u8; 64]);
-
-#[embassy_executor::task]
-pub async fn worker(spi: at32f4xx_hal::spi::Spi<at32f4xx_hal::spi::mode::Master>) {
-    worker_(spi).await;
+unsafe extern "C" {
+    static __config_start: u32;
+    static __config_end: u32;
 }
 
-pub async fn worker_(spi: at32f4xx_hal::spi::Spi<at32f4xx_hal::spi::mode::Master>) {
-    let mut flash = w25::W25::<w25::Q, _, _, _>::new(
-        spi,
-        dummy_pin::DummyPin::new_high(),
-        dummy_pin::DummyPin::new_high(),
-        PAGE_SIZE * 65536,
-    )
-    .unwrap();
+fn config_start() -> usize {
+    unsafe { &__config_start as *const u32 as usize }
+}
 
-    flash.reset().await.unwrap();
+fn config_end() -> usize {
+    unsafe { &__config_end as *const u32 as usize }
+}
 
-    let flash_id = flash.device_id().await.unwrap();
-    defmt::info!("Flash device id: {}", flash_id);
-    let mut first_10_bytes = [0u8; 10];
-    flash.read(0, &mut first_10_bytes).await.unwrap();
-    defmt::info!("Flash device bytes: {}", first_10_bytes);
+#[embassy_executor::task]
+pub async fn worker(flash: at32f4xx_hal::pac::FLASH) {
+    worker_(flash).await;
+}
 
-    let buf: &mut [u8] = BUF.take().as_mut_slice();
-
-    let wrapped_flash = cfg_noodle::flash::Flash::new(
-        flash,
-        BASE_ADDR..(BASE_ADDR + TOTAL_SIZE as u32),
-        NoCache::new(),
+pub async fn worker_(flash: at32f4xx_hal::pac::FLASH) {
+    defmt::debug!(
+        "FLASH INFO: start: {:x}, end: {:x}, len: {:x}",
+        config_start(),
+        config_end(),
+        config_end() - config_start()
     );
 
-    cfg_noodle::worker_task::default_worker_task(
-        &LIST,
-        wrapped_flash,
-        core::future::pending::<core::convert::Infallible>(),
-        buf,
-    )
-    .await;
+    let mut buffer = [0u8; 64];
+
+    let mut map_storage =
+        MapStorage::<u8, _, _>::new(MyFlash(flash), MapConfig::new(0..8192), NoCache);
+
+    init_stored::<SpeedLimit, _, _>(&mut map_storage, &mut buffer);
+    init_stored::<HeadlightMode, _, _>(&mut map_storage, &mut buffer);
+    init_stored::<SpeedMode, _, _>(&mut map_storage, &mut buffer);
+    init_stored::<UnlockCode, _, _>(&mut map_storage, &mut buffer);
+
+    loop {
+        Timer::after_secs(10).await;
+
+        write_stored_if_changed::<SpeedLimit, _, _>(&mut map_storage, &mut buffer);
+        write_stored_if_changed::<HeadlightMode, _, _>(&mut map_storage, &mut buffer);
+        write_stored_if_changed::<SpeedMode, _, _>(&mut map_storage, &mut buffer);
+        write_stored_if_changed::<UnlockCode, _, _>(&mut map_storage, &mut buffer);
+    }
+}
+
+fn init_stored<T: Storable, S: NorFlash, C: KeyCacheImpl<u8>>(
+    map_storage: &mut MapStorage<u8, S, C>,
+    buf: &mut [u8],
+) {
+    match embassy_futures::block_on(map_storage.fetch_item::<CborValue<T>>(buf, &T::ID)) {
+        Ok(Some(v)) => {
+            T::update_stored(v.0);
+            let _ = T::take_if_changed();
+        }
+        Ok(None) => {
+            defmt::debug!("No stored entry found for id {}, loading default", T::ID);
+            T::update_stored(T::default());
+            let _ = T::take_if_changed();
+        }
+        Err(_) => {
+            defmt::warn!("Failed to fetch entry for id {}", T::ID);
+        }
+    }
+}
+
+fn write_stored_if_changed<T: Storable, S: NorFlash, C: KeyCacheImpl<u8>>(
+    map_storage: &mut MapStorage<u8, S, C>,
+    buf: &mut [u8],
+) {
+    if let Some(v) = T::take_if_changed() {
+        if let Err(_) =
+            embassy_futures::block_on(map_storage.store_item(buf, &T::ID, &CborValue(v)))
+        {
+            defmt::warn!("Failed to write changed item for id {}", T::ID);
+        } else {
+            defmt::debug!("Updated entry for id {}", T::ID);
+        }
+    }
+}
+
+struct CborValue<T>(T);
+
+impl<'a, T: Storable> Value<'a> for CborValue<T> {
+    fn serialize_into(
+        &self,
+        buffer: &mut [u8],
+    ) -> Result<usize, sequential_storage::map::SerializationError> {
+        let mut c = Cursor::new(buffer);
+        minicbor::encode(&self.0, &mut c).map_err(|_| SerializationError::BufferTooSmall)?;
+        Ok(c.position())
+    }
+
+    fn deserialize_from(
+        buffer: &'a [u8],
+    ) -> Result<(Self, usize), sequential_storage::map::SerializationError>
+    where
+        Self: Sized,
+    {
+        let mut decoder = Decoder::new(buffer);
+        let val = decoder.decode().map_err(|e| {
+            if e.is_end_of_input() {
+                SerializationError::BufferTooSmall
+            } else if e.is_type_mismatch() || e.is_tag_mismatch() {
+                SerializationError::InvalidFormat
+            } else {
+                SerializationError::InvalidData
+            }
+        })?;
+        let pos = decoder.position();
+        Ok((CborValue(val), pos))
+    }
+}
+
+struct MyFlash(at32f4xx_hal::pac::FLASH);
+
+impl embedded_storage_async::nor_flash::ErrorType for MyFlash {
+    type Error = at32f4xx_hal::flash::Error;
+}
+
+impl ReadNorFlash for MyFlash {
+    const READ_SIZE: usize = 1;
+
+    async fn read(&mut self, offset: u32, bytes: &mut [u8]) -> Result<(), Self::Error> {
+        let offset = offset as usize;
+        let config_offset = config_start() - self.0.address();
+        let offset = offset.saturating_add(config_offset);
+
+        defmt::trace!(
+            "(app) Reading flash at {:x} for {} bytes",
+            offset,
+            bytes.len()
+        );
+
+        // dunno if we need to do anything better here to prevent fuckery
+        for (src, dst) in self.0.read()[offset..].iter().zip(bytes.iter_mut()) {
+            *dst = *src;
+        }
+
+        Ok(())
+    }
+
+    fn capacity(&self) -> usize {
+        config_end() - config_start()
+    }
+}
+
+impl NorFlash for MyFlash {
+    const WRITE_SIZE: usize = 1;
+    const ERASE_SIZE: usize = 2048;
+
+    async fn erase(&mut self, from: u32, to: u32) -> Result<(), Self::Error> {
+        let config_offset = config_start() - self.0.address();
+        let from = from.saturating_add(config_offset as u32);
+        let to = to.saturating_add(config_offset as u32);
+
+        let mut unlocked = self.0.unlocked();
+
+        defmt::trace!("(app) Erasing flash from {:x} to {:x}", from, to);
+
+        embedded_storage::nor_flash::NorFlash::erase(&mut unlocked, from, to)?;
+
+        Ok(())
+    }
+
+    async fn write(&mut self, offset: u32, bytes: &[u8]) -> Result<(), Self::Error> {
+        let config_offset = config_start() - self.0.address();
+        let offset = offset.saturating_add(config_offset as u32);
+
+        let mut unlocked = self.0.unlocked();
+
+        defmt::trace!(
+            "(app) Writing flash at {:x} with {} bytes",
+            offset,
+            bytes.len()
+        );
+
+        embedded_storage::nor_flash::NorFlash::write(&mut unlocked, offset, bytes)?;
+
+        Ok(())
+    }
 }

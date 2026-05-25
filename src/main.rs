@@ -196,29 +196,12 @@ async fn async_main_(
     buttons::start_buttons(high_spawner, uart5, power_button);
     can::start_can(high_spawner, can_tx, can_rx);
 
-    // low_spawner.spawn(ui::ui(display).unwrap());
+    low_spawner.spawn(ui::ui(display).unwrap());
     high_spawner.spawn(system_state::system_state_updater().unwrap());
     high_spawner.spawn(adc::adc_task(adc, adc_ch12, adc_ch13, adc_ch15).unwrap());
     high_spawner.spawn(operation::operation_task().unwrap());
 
-    defmt::info!("Setting up spi flash");
-
-    let mut spi_config = at32f4xx_hal::spi::Config::default();
-    spi_config.mode.phase = at32f4xx_hal::spi::Phase::CaptureOnFirstTransition;
-    spi_config.mode.polarity = at32f4xx_hal::spi::Polarity::IdleLow;
-    spi_config.bit_order = at32f4xx_hal::spi::BitOrder::MsbFirst;
-    spi_config.frequency = Hertz::MHz(1);
-    let spi: at32f4xx_hal::spi::Spi<at32f4xx_hal::spi::mode::Master> = at32f4xx_hal::spi::Spi::new(
-        dp.SPI1,
-        Some(gpioa.pa5),
-        Some(gpioa.pa7),
-        Some(gpioa.pa6),
-        Some(gpioa.pa4),
-        spi_config,
-        &clocks,
-    );
-
-    high_spawner.spawn(noodle::worker(spi).unwrap());
+    low_spawner.spawn(noodle::worker(dp.FLASH).unwrap());
 
     defmt::info!("Startup complete");
 

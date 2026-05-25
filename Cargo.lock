@@ -27,6 +27,7 @@ dependencies = [
 [[package]]
 name = "at32f4xx-hal"
 version = "0.0.1"
+source = "git+https://github.com/simmsb/at32f4xx-hal#06d953acc0ed7a9ea52173513df98ae7983d9f82"
 dependencies = [
  "at32f4xx-pac",
  "bit_field",
@@ -183,28 +184,6 @@ name = "cfg-if"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
-
-[[package]]
-name = "cfg-noodle"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d50ed0758c9fbfb2d614628402d8a43a2d1c08680332470b24392ce838b49ba3"
-dependencies = [
- "cordyceps",
- "crc",
- "critical-section",
- "defmt 1.1.0",
- "embassy-futures",
- "embassy-sync",
- "embassy-time",
- "embedded-storage-async",
- "maitake-sync",
- "minicbor",
- "mutex",
- "mutex-traits",
- "pin-project",
- "sequential-storage",
-]
 
 [[package]]
 name = "chrono"
@@ -550,7 +529,6 @@ source = "git+https://github.com/embassy-rs/embassy#7f8bb6f4ca46e1da4b7cff5a9cc6
 dependencies = [
  "cfg-if",
  "critical-section",
- "defmt 1.1.0",
  "embedded-io-async",
  "futures-core",
  "futures-sink",
@@ -994,21 +972,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "maitake-sync"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d77c365d697828821727b9bc09e6bc3c518b8c63804e79e1be5a5ae091a7c5f"
-dependencies = [
- "cordyceps",
- "loom",
- "mutex-traits",
- "mycelium-bitfield",
- "pin-project",
- "portable-atomic",
- "tracing",
-]
-
-[[package]]
 name = "matchers"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1085,28 +1048,6 @@ dependencies = [
  "embedded-hal 1.0.0",
  "heapless 0.8.0",
 ]
-
-[[package]]
-name = "mutex"
-version = "1.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f23bf5944734b7a5d1bd0a9b594213dd04de471fd3d3a1bfce672913dd72d606"
-dependencies = [
- "critical-section",
- "mutex-traits",
-]
-
-[[package]]
-name = "mutex-traits"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3929f2b5633d29cf7b6624992e5f3c1e9334f1193423e12d17be4faf678cde3f"
-
-[[package]]
-name = "mycelium-bitfield"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24e0cc5e2c585acbd15c5ce911dff71e1f4d5313f43345873311c4f5efd741cc"
 
 [[package]]
 name = "nb"
@@ -1193,26 +1134,6 @@ name = "paste"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
-
-[[package]]
-name = "pin-project"
-version = "1.1.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2466b2336ed02bcdca6b294417127b90ec92038d1d5c4fbeac971a922e0e0924"
-dependencies = [
- "pin-project-internal",
-]
-
-[[package]]
-name = "pin-project-internal"
-version = "1.1.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c96395f0a926bc13b1c17622aaddda1ecb55d49c8f1bf9777e4d877800a43f8b"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.117",
-]
 
 [[package]]
 name = "pin-project-lite"
@@ -1370,7 +1291,6 @@ dependencies = [
  "build_script_file_gen",
  "buoyant",
  "butt-head",
- "cfg-noodle",
  "chrono",
  "cortex-m",
  "cortex-m-rt",
@@ -1390,6 +1310,7 @@ dependencies = [
  "embedded-graphics",
  "embedded-hal-nb",
  "embedded-io-async",
+ "embedded-storage",
  "embedded-storage-async",
  "fugit 0.4.0",
  "glyphr",
@@ -1401,10 +1322,11 @@ dependencies = [
  "once_cell",
  "panic-probe",
  "panic-reset",
+ "paste",
  "pin-project-lite",
+ "sequential-storage",
  "static_cell",
  "strum",
- "w25",
 ]
 
 [[package]]
@@ -1785,19 +1707,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "de437e2a6208b014ab52972a27e59b33fa2920d3e00fe05026167a1c509d19cc"
 dependencies = [
  "vcell",
-]
-
-[[package]]
-name = "w25"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8d862fe806e9fedc04359f17e363d9b2c6d61c2b9acaf2bdb0060d30b032b09"
-dependencies = [
- "defmt 1.1.0",
- "embedded-hal 1.0.0",
- "embedded-hal-async",
- "embedded-storage",
- "embedded-storage-async",
 ]
 
 [[package]]
