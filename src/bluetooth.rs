@@ -4,7 +4,11 @@
 // - 57600 baud
 
 use crate::{
-    bluetooth_proto::*, cfg::{HeadlightMode, SpeedMode}, no_inline_future::NoInlineFutExt as _, operation::{self, OPERATION_COMMANDS, OperationCommand}, system_state
+    bluetooth_proto::*,
+    cfg::{HeadlightMode, SpeedMode},
+    no_inline_future::NoInlineFutExt as _,
+    operation::{self, OPERATION_COMMANDS, OperationCommand},
+    system_state,
 };
 use at32f4xx_hal::{
     pac::USART2,
@@ -17,7 +21,7 @@ use embassy_executor::SendSpawner;
 use embassy_sync::{blocking_mutex, zerocopy_channel};
 use embassy_time::{Duration, Ticker};
 use embedded_io_async::Write as _;
-use static_cell::StaticCell;
+use static_cell::{ConstStaticCell, StaticCell};
 
 // `[0x55, length, unknown, handler_idx_low, handler_idx_high, ...[data], crc[0], crc[1]]`
 
@@ -155,7 +159,9 @@ async fn bluetooth_tx_(
 ) {
     defmt::info!("Bluetooth TX startup");
 
-    let mut buf = [0u8; crate::framed_reader::buffer_size_for_type::<Response>()];
+    static BUF: ConstStaticCell<[u8; crate::framed_reader::buffer_size_for_type::<Response>()]> =
+        ConstStaticCell::new([0; _]);
+    let buf = BUF.take();
 
     loop {
         let slot = match embassy_futures::select::select(
@@ -208,12 +214,10 @@ async fn bluetooth_tx_(
                 Some(Response::OperationCommand(OperationCommandResponse))
             }
             Command::DeviceState(_) => {
-                let (lights_on, locked, driving_mode) = operation::read_state(|s| {
-                    match s {
-                        operation::OperationState::Locked(_) => (false, true, 0),
-                        operation::OperationState::Active(a) => {
-                            (a.headlight_on(), false, a.speed_mode as u8)
-                        }
+                let (lights_on, locked, driving_mode) = operation::read_state(|s| match s {
+                    operation::OperationState::Locked(_) => (false, true, 0),
+                    operation::OperationState::Active(a) => {
+                        (a.headlight_on(), false, a.speed_mode as u8)
                     }
                 });
 
@@ -295,7 +299,7 @@ async fn bluetooth_tx_(
         slot.receive_done();
 
         if let Some(resp) = resp {
-            let to_send = match crate::framed_reader::assemble_framed_deku(&mut buf, 0xaa, &resp) {
+            let to_send = match crate::framed_reader::assemble_framed_deku(buf, 0xaa, &resp) {
                 Err(e) => {
                     defmt::error!("Error writing bt response frame: {}", e);
 

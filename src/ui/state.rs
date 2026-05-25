@@ -8,15 +8,17 @@ pub enum Page {
     #[default]
     Home,
     Settings,
+    Info,
 }
 
 impl Page {
     pub fn handle_action(&self, action: PageAction) -> Option<Self> {
+        // TODO: this is dumb, refactor
         match (self, action) {
-            (Page::Home, PageAction::EnterSettings) => Some(Page::Settings),
-            (Page::Home, _) => None,
-            (Page::Settings, PageAction::ExitSettings) => Some(Page::Home),
-            (Page::Settings, _) => None,
+            (_, PageAction::EnterSettings) => Some(Page::Settings),
+            (_, PageAction::ExitSettings) => Some(Page::Home),
+            (_, PageAction::EnterInfo) => Some(Page::Info),
+            (_, _) => None,
         }
     }
 }
@@ -25,6 +27,7 @@ impl Page {
 pub enum PageAction {
     EnterSettings,
     ExitSettings,
+    EnterInfo,
 }
 
 pub struct State {

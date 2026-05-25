@@ -10,7 +10,8 @@ use crate::{
     operation::{self, OperationCommand},
     ui::{
         colour::{self, ColorFormat},
-        font, keys, state,
+        font, keys,
+        state::{self, PageAction},
     },
 };
 
@@ -173,6 +174,13 @@ impl Setting {
             Setting::Info => const { &[] },
         }
     }
+
+    const fn triggers_page(self) -> Option<PageAction> {
+        match self {
+            Setting::Info => Some(PageAction::EnterInfo),
+            _ => None,
+        }
+    }
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, defmt::Format, Default)]
@@ -188,7 +196,13 @@ fn setting_entry(
         EmptyView
     } else {
         Button::new(
-            move |s: &mut state::State| s.settings_state.open_menu = Some(setting),
+            move |s: &mut state::State| {
+                if let Some(next_page) = setting.triggers_page() {
+                    s.page_action = Some(next_page);
+                } else {
+                    s.settings_state.open_menu = Some(setting);
+                }
+            },
             move |bs| {
                 let (fg, bg) = if bs.is_focused() {
                     (colour::ON_TERTIARY_CONTAINER, colour::TERTIARY_CONTAINER)

@@ -41,23 +41,23 @@ pub static BT_COMMANDS: embassy_sync::channel::Channel<
 #[derive(PartialEq, Eq, defmt::Format, Clone)]
 pub struct SystemVoltage {
     pub from_controller: u16,
-    pub from_battery: u32,
+    pub from_battery: u16,
 }
 
 #[derive(PartialEq, Eq, defmt::Format, Clone)]
 pub struct BatteryDebug {
     pub command: u16,
     pub state: u16,
-    pub estimated_range: u32,
+    pub estimated_range: u16,
 }
 
 #[derive(PartialEq, Eq, defmt::Format, Clone)]
 pub struct BatteryInfo {
     pub level_from_controller: u8,
     pub relative_soc: u8,
-    pub absolute_soc: u32,
+    pub absolute_soc: u16,
     pub relative_soh: u8,
-    pub absolute_soh: u32,
+    pub absolute_soh: u16,
     pub capacity: u16,
     pub charged: bool,
     pub charging: bool,
@@ -80,7 +80,7 @@ pub struct SystemState {
     pub system_voltage: SystemVoltage,
     pub controller_speed_limit_mode: bool,
 
-    pub battery_current: i32,
+    pub battery_current: i16,
     pub battery_debug: BatteryDebug,
     pub battery_info: BatteryInfo,
 
@@ -89,7 +89,7 @@ pub struct SystemState {
 
     pub buttons: Buttons,
 
-    pub charges: [Option<BatteryChargeEntry>; 16],
+    // pub charges: [Option<BatteryChargeEntry>; 16],
 }
 
 impl SystemState {
@@ -124,7 +124,7 @@ impl SystemState {
         ambient_light: AmbientLight::INITIAL,
         buttons: Buttons::empty(),
 
-        charges: [const { None }; _],
+        // charges: [const { None }; _],
     };
 
     fn update_from_adc_reading(&mut self, reading: crate::adc::AdcReading) -> bool {
@@ -218,29 +218,29 @@ impl SystemState {
                 self.battery_debug = BatteryDebug {
                     command: *command,
                     state: *state,
-                    estimated_range: *estimated_range,
+                    estimated_range: *estimated_range as u16,
                 }
             }
             CanMessage::BatteryVoltageCurrent(BatteryVoltageCurrent {
                 voltage_mv,
                 current_ma,
             }) => {
-                self.system_voltage.from_battery = *voltage_mv;
-                self.battery_current = *current_ma;
+                self.system_voltage.from_battery = *voltage_mv as u16;
+                self.battery_current = *current_ma as i16;
             }
             CanMessage::BatteryChargeLevel(BatteryChargeLevel {
                 relative_soc,
                 absolute_soc_mah,
             }) => {
                 self.battery_info.relative_soc = *relative_soc as u8;
-                self.battery_info.absolute_soc = *absolute_soc_mah;
+                self.battery_info.absolute_soc = *absolute_soc_mah as u16;
             }
             CanMessage::BatteryStateOfHealth(BatteryStateOfHealth {
                 relative_soh,
                 absolute_soh_mah,
             }) => {
                 self.battery_info.relative_soh = *relative_soh;
-                self.battery_info.absolute_soh = *absolute_soh_mah;
+                self.battery_info.absolute_soh = *absolute_soh_mah as u16;
             }
             CanMessage::BatteryCapacityTemp(BatteryCapacityTemp {
                 capacity_mah,
@@ -253,45 +253,46 @@ impl SystemState {
                 self.battery_info.charging = *battery_charging;
                 self.battery_info.temperature = *battery_temp;
             }
-            CanMessage::BatteryChargeHistoryEntry(BatteryChargeHistoryEntry {
-                idx,
-                year,
-                month,
-                day,
-                hour,
-                minute,
-                second,
-                ..
-            }) => {
-                let Some(d) = chrono::NaiveDate::from_ymd_opt(
-                    *year as i32 + 2000,
-                    *month as u32,
-                    *day as u32,
-                ) else {
-                    return;
-                };
-                let Some(t) =
-                    chrono::NaiveTime::from_hms_opt(*hour as u32, *minute as u32, *second as u32)
-                else {
-                    return;
-                };
-                let dt = chrono::NaiveDateTime::new(d, t);
+            _ => {}
+            // CanMessage::BatteryChargeHistoryEntry(BatteryChargeHistoryEntry {
+            //     idx,
+            //     year,
+            //     month,
+            //     day,
+            //     hour,
+            //     minute,
+            //     second,
+            //     ..
+            // }) => {
+            //     let Some(d) = chrono::NaiveDate::from_ymd_opt(
+            //         *year as i32 + 2000,
+            //         *month as u32,
+            //         *day as u32,
+            //     ) else {
+            //         return;
+            //     };
+            //     let Some(t) =
+            //         chrono::NaiveTime::from_hms_opt(*hour as u32, *minute as u32, *second as u32)
+            //     else {
+            //         return;
+            //     };
+            //     let dt = chrono::NaiveDateTime::new(d, t);
 
-                let Some(entry) = self.charges.get_mut(*idx as usize) else {
-                    return;
-                };
-                entry.get_or_insert_default().when = dt.and_utc();
-            }
-            CanMessage::BatteryChargeHistoryCharge(BatteryChargeHistoryCharge {
-                idx,
-                charge,
-                ..
-            }) => {
-                let Some(entry) = self.charges.get_mut(*idx as usize) else {
-                    return;
-                };
-                entry.get_or_insert_default().charge = *charge;
-            }
+            //     let Some(entry) = self.charges.get_mut(*idx as usize) else {
+            //         return;
+            //     };
+            //     entry.get_or_insert_default().when = dt.and_utc();
+            // }
+            // CanMessage::BatteryChargeHistoryCharge(BatteryChargeHistoryCharge {
+            //     idx,
+            //     charge,
+            //     ..
+            // }) => {
+            //     let Some(entry) = self.charges.get_mut(*idx as usize) else {
+            //         return;
+            //     };
+            //     entry.get_or_insert_default().charge = *charge;
+            // }
         }
     }
 }

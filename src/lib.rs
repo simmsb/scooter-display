@@ -5,6 +5,8 @@
 #![cfg_attr(not(test), feature(integer_widen_truncate))]
 #![feature(mem_conjure_zst)]
 #![feature(integer_cast_extras)]
+#![feature(type_alias_impl_trait)]
+#![feature(impl_trait_in_assoc_type)]
 
 #[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod adc;

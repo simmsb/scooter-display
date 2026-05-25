@@ -3,6 +3,7 @@ use buoyant::{event::Event, match_view, view::prelude::*};
 use super::{colour, keys};
 
 pub mod home;
+pub mod info;
 pub mod locked;
 pub mod settings;
 
@@ -14,6 +15,7 @@ pub fn root_view(state: &super::State) -> impl View<colour::ColorFormat, super::
         (true, _) => locked::view(state),
         (false, Page::Home) => home::view(state),
         (false, Page::Settings) => settings::view(state),
+        (false, Page::Info) => info::view(state),
     })
     .padding(Edges::All, 5)
     .background_color(colour::BACKGROUND, RoundedRectangle::new(8))

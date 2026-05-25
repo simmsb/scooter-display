@@ -85,14 +85,17 @@ async fn ui_(mut display: crate::display::Display) {
 
     let app_start = Instant::now();
 
-    let mut app = buoyant::app::App::new(state::State::new(), target.size(), view::root_view)
-        .with_roles(Role::Button | Role::Container);
+    let app = static_cell::make_static!(buoyant::app::App::new(state::State::new(), target.size(), view::root_view)
+        .with_roles(Role::Button | Role::Container));
 
     app.focus_forward();
 
     target.clear(colour::BLACK);
 
     let mut diffing_mem = [0u8; root_view_differ_size(view::root_view)];
+
+    defmt::debug!("UI APP size: {}", core::mem::size_of_val(app));
+    defmt::trace!("UI differ takes {} bytes", diffing_mem.len());
 
     let mut immediate_redraw = false;
 

@@ -1,5 +1,6 @@
 #![no_std]
 #![no_main]
+#![feature(impl_trait_in_assoc_type)]
 
 use at32f4xx_hal::{interrupt, spi::MODE_3, time::Hertz};
 use embassy_executor::{InterruptExecutor, SendSpawner, Spawner};

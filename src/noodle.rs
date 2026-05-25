@@ -35,7 +35,7 @@ pub async fn worker_(flash: at32f4xx_hal::pac::FLASH) {
         config_end() - config_start()
     );
 
-    let mut buffer = [0u8; 64];
+    let mut buffer = [0u8; 32];
 
     let mut map_storage =
         MapStorage::<u8, _, _>::new(MyFlash(flash), MapConfig::new(0..8192), NoCache);
