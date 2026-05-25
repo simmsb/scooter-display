@@ -1,6 +1,7 @@
 use material_colors::{color::Rgb, dynamic_color::Variant};
 
 const SOURCE_COLOUR: Rgb = Rgb::new(218, 189, 254);
+const DARK_MODE: bool = false;
 
 macro_rules! add {
     ($s:ident, $scheme:ident, $name:ident) => {{
@@ -15,7 +16,7 @@ fn main() {
     let scheme = material_colors::dynamic_color::DynamicScheme::by_variant(
         SOURCE_COLOUR,
         variant,
-        false,
+        DARK_MODE,
         None,
     )
     .with_spec_version(material_colors::dynamic_color::color_spec::SpecVersion::Spec2021);
