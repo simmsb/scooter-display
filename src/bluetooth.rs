@@ -4,10 +4,7 @@
 // - 57600 baud
 
 use crate::{
-    bluetooth_proto::*,
-    no_inline_future::NoInlineFutExt as _,
-    operation::{self, OPERATION_COMMANDS, OperationCommand},
-    system_state,
+    bluetooth_proto::*, cfg::{HeadlightMode, SpeedMode}, no_inline_future::NoInlineFutExt as _, operation::{self, OPERATION_COMMANDS, OperationCommand}, system_state
 };
 use at32f4xx_hal::{
     pac::USART2,
@@ -212,12 +209,12 @@ async fn bluetooth_tx_(
             }
             Command::DeviceState(_) => {
                 let (lights_on, locked, driving_mode) = operation::read_state(|s| {
-                    (match s {
-                        operation::OperationState::Locked => (false, true, 0),
+                    match s {
+                        operation::OperationState::Locked(_) => (false, true, 0),
                         operation::OperationState::Active(a) => {
                             (a.headlight_on(), false, a.speed_mode as u8)
                         }
-                    })
+                    }
                 });
 
                 system_state::read_state(|s| {
@@ -324,17 +321,17 @@ async fn handle_operation_command(cmd: &OperationHandleCommand) {
         }),
         OperationHandleCommand::SetLightsOn(on) => {
             Some(OperationCommand::SetHeadlightMode(if *on {
-                crate::operation::HeadlightMode::On
+                HeadlightMode::On
             } else {
-                crate::operation::HeadlightMode::Off
+                HeadlightMode::Off
             }))
         }
         OperationHandleCommand::SetDrivingMode(mode) => {
             Some(OperationCommand::SetSpeedMode(match mode {
-                0 => crate::can_proto::SpeedMode::Walk,
-                1 => crate::can_proto::SpeedMode::Eco,
-                2 => crate::can_proto::SpeedMode::Trip,
-                _ => crate::can_proto::SpeedMode::Sport,
+                0 => SpeedMode::Walk,
+                1 => SpeedMode::Eco,
+                2 => SpeedMode::Trip,
+                _ => SpeedMode::Sport,
             }))
         }
         OperationHandleCommand::SyncRTC { timestamp_millis } => {

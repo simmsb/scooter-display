@@ -1,5 +1,7 @@
 use deku::{DekuContainerWrite as _, DekuError, DekuSize};
 
+use crate::cfg::SpeedMode;
+
 #[derive(defmt::Format, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CanId {
     // Controller -> display
@@ -136,14 +138,6 @@ impl CanValue for ControllerTempMotor {
     fn can_id() -> CanId {
         CanId::ControllerTempMotor
     }
-}
-
-#[derive(defmt::Format, Clone, Copy, PartialEq, Eq, Debug, rotate_enum::RotateEnum)]
-pub enum SpeedMode {
-    Walk,
-    Eco,
-    Trip,
-    Sport,
 }
 
 impl SpeedMode {

@@ -6,12 +6,10 @@ use chrono::Timelike;
 use heapless::HistoryBuf;
 
 use crate::{
-    buttons_proto::Buttons,
-    operation::{self, HeadlightMode, OperationCommand},
-    ui::{
+    buttons_proto::Buttons, cfg::HeadlightMode, operation::{self, OperationCommand}, ui::{
         colour::{self, ColorFormat},
         font, keys, state,
-    },
+    }
 };
 
 #[derive(Default)]

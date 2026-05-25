@@ -28,7 +28,10 @@ pub mod time_driver;
 pub mod ui;
 #[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod rtc;
+#[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod no_inline_future;
+#[cfg(all(target_arch = "arm", target_os = "none"))]
+pub mod noodle;
 
 pub const ON_BENCH: bool = true;
 
@@ -36,3 +39,6 @@ pub mod bluetooth_proto;
 pub mod buttons_proto;
 pub mod can_proto;
 pub mod framed_reader;
+
+pub mod cfg;
+pub mod pin_digit;

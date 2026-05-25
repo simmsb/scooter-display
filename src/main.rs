@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use at32f4xx_hal::interrupt;
+use at32f4xx_hal::{interrupt, spi::MODE_3, time::Hertz};
 use embassy_executor::{InterruptExecutor, SendSpawner, Spawner};
 
 use embassy_time::{Duration, TimeoutError, WithTimeout};
@@ -29,7 +29,7 @@ use defmt_rtt as _;
 use static_cell::StaticCell;
 
 use scooter_display::{
-    adc, bluetooth, buttons, can, display, operation, rtc, system_state, time_driver, ui,
+    adc, bluetooth, buttons, can, display, noodle, operation, rtc, system_state, time_driver, ui
 };
 
 static EXECUTOR_HIGH: InterruptExecutor = InterruptExecutor::new();
@@ -78,7 +78,7 @@ async fn async_main_(
     let gpioa = dp.GPIOA.split();
     let gpioc = dp.GPIOC.split();
     let gpiod = dp.GPIOD.split();
-    let _gpiof = dp.GPIOF.split();
+    let gpiof = dp.GPIOF.split();
 
     let exti = dp.EXINT.split();
 
@@ -118,7 +118,9 @@ async fn async_main_(
 
     defmt::info!("Starting peripheral init");
     let mut system_power = gpioa.pa8.into_push_pull_output();
-    system_power.set_high();
+    system_power.set_low();
+    let mut gpiof_4 = gpiof.pf4.into_push_pull_output();
+    gpiof_4.set_low();
 
     rtc::init_rtc(dp.ERTC, &mut dp.CRM, &mut dp.PWC);
 
@@ -194,10 +196,29 @@ async fn async_main_(
     buttons::start_buttons(high_spawner, uart5, power_button);
     can::start_can(high_spawner, can_tx, can_rx);
 
-    low_spawner.spawn(ui::ui(display).unwrap());
+    // low_spawner.spawn(ui::ui(display).unwrap());
     high_spawner.spawn(system_state::system_state_updater().unwrap());
     high_spawner.spawn(adc::adc_task(adc, adc_ch12, adc_ch13, adc_ch15).unwrap());
     high_spawner.spawn(operation::operation_task().unwrap());
+
+    defmt::info!("Setting up spi flash");
+
+    let mut spi_config = at32f4xx_hal::spi::Config::default();
+    spi_config.mode.phase = at32f4xx_hal::spi::Phase::CaptureOnFirstTransition;
+    spi_config.mode.polarity = at32f4xx_hal::spi::Polarity::IdleLow;
+    spi_config.bit_order = at32f4xx_hal::spi::BitOrder::MsbFirst;
+    spi_config.frequency = Hertz::MHz(1);
+    let spi: at32f4xx_hal::spi::Spi<at32f4xx_hal::spi::mode::Master> = at32f4xx_hal::spi::Spi::new(
+        dp.SPI1,
+        Some(gpioa.pa5),
+        Some(gpioa.pa7),
+        Some(gpioa.pa6),
+        Some(gpioa.pa4),
+        spi_config,
+        &clocks,
+    );
+
+    high_spawner.spawn(noodle::worker(spi).unwrap());
 
     defmt::info!("Startup complete");
 

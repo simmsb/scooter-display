@@ -11,6 +11,6 @@
     enable = true;
     channel = "nightly";
     targets = [ "thumbv7em-none-eabi" ];
-    components = [ "rustc" "cargo" "clippy" "rustfmt" "rust-analyzer" "rust-src" ];
+    components = [ "rustc" "cargo" "clippy" "rustfmt" "rust-analyzer" "rust-src" "llvm-tools" ];
   };
 }

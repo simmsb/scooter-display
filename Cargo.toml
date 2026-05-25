@@ -42,11 +42,16 @@ embassy-futures = "0.1.2"
 no-std-moving-average = "0.3.0"
 panic-reset = { version = "0.1.1", optional = true }
 butt-head = { version = "0.2.0", features = ["defmt"] }
-rotate-enum = "0.1.2"
 strum = { version = "0.28.0", default-features = false, features = ["derive"] }
 chrono = { version = "0.4.44", default-features = false, features = ["defmt"] }
 once_cell = { version = "1.21.4", default-features = false, features = ["critical-section", "portable-atomic"] }
 pin-project-lite = "0.2.17"
+cfg-noodle = { version = "0.7.0", features = ["defmt", "default-worker"] }
+embedded-storage-async = "0.4.1"
+w25 = { version = "0.6.0", features = ["defmt"] }
+dummy-pin = "1.0.0"
+minicbor = { version = "2.2.2", default-features = false, features = ["derive"] }
+derive-enum-rotate = { git = "https://github.com/simmsb/derive-enum-rotate", version = "0.1.0" }
 
 [features]
 test = ["deku/descriptive-errors"]
@@ -70,8 +75,8 @@ embassy-executor-timer-queue = { git = "https://github.com/embassy-rs/embassy" }
 #glyphr-macros = { path = "../glyphr/glyphr-macros" }
 #glyphr = { path = "../glyphr/glyphr" }
 
-# [patch."https://github.com/simmsb/at32f4xx-hal"]
-# at32f4xx-hal = { path = "../at32f4xx-hal" }
+[patch."https://github.com/simmsb/at32f4xx-hal"]
+at32f4xx-hal = { path = "../at32f4xx-hal" }
 
 # [patch."https://github.com/simmsb/at32f4xx-pac"]
 # at32f4xx-pac = { path = "../at32f4xx-pac" }

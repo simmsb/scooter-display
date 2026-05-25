@@ -7,7 +7,8 @@ use crate::{
     adc::{AmbientLight, Throttle},
     buttons_proto::Buttons,
     can::CAN_TX_BUS,
-    can_proto::{DisplaySpeedMode, DisplayThrottle, SpeedMode},
+    can_proto::{DisplaySpeedMode, DisplayThrottle},
+    cfg::{HEADLIGHT_MODE, HeadlightMode, SPEED_LIMIT, SPEED_MODE, SpeedLimit, SpeedMode, UNLOCK_CODE, UnlockCode},
 };
 
 pub const DEFAULT_SPEED_LIMIT: u8 = 22;
@@ -56,16 +57,24 @@ pub enum OperationCommand {
 
 #[derive(PartialEq, Eq, defmt::Format, Clone)]
 pub enum OperationState {
-    Locked,
+    Locked(Option<UnlockCode>),
     Active(ActiveState),
 }
 
 impl OperationState {
-    const DEFAULT: Self = Self::Locked;
+    const DEFAULT: Self = Self::Locked(None);
 
     fn read_if_active<T>(&self, f: impl FnOnce(&ActiveState) -> T) -> Option<T> {
         if let Self::Active(active) = self {
             Some(f(active))
+        } else {
+            None
+        }
+    }
+
+    pub fn as_locked(&self) -> Option<&Option<UnlockCode>> {
+        if let OperationState::Locked(code) = self {
+            Some(code)
         } else {
             None
         }
@@ -87,17 +96,10 @@ impl OperationState {
 
     pub fn is_locked(&self) -> bool {
         match self {
-            Self::Locked => true,
+            Self::Locked(_) => true,
             _ => false,
         }
     }
-}
-
-#[derive(PartialEq, Eq, defmt::Format, Copy, Clone, rotate_enum::RotateEnum)]
-pub enum HeadlightMode {
-    Auto,
-    On,
-    Off,
 }
 
 #[derive(PartialEq, Eq, defmt::Format, Copy, Clone)]
@@ -148,6 +150,19 @@ async fn operation_task_() {
 
     let state_updates = STATE_UPDATES.sender();
 
+    let mut speed_limit_cfg = SPEED_LIMIT.attach(&crate::noodle::LIST).await.unwrap();
+    let mut headlight_mode_cfg = HEADLIGHT_MODE.attach(&crate::noodle::LIST).await.unwrap();
+    let mut speed_mode_cfg = SPEED_MODE.attach(&crate::noodle::LIST).await.unwrap();
+    let mut unlock_code_cfg = UNLOCK_CODE.attach(&crate::noodle::LIST).await.unwrap();
+
+    defmt::info!("Loaded unlock code: {}", unlock_code_cfg.load());
+
+    update_state(|s| if s.is_locked() {
+        *s = OperationState::Locked(Some(unlock_code_cfg.load()))
+    });
+
+    state_updates.send(());
+
     loop {
         match select::select4(
             send_can_messages_ticker.next(),
@@ -182,13 +197,14 @@ async fn operation_task_() {
                 })
             }),
             select::Either4::Fourth(op_cmd) => {
+                defmt::info!("Handling op command: {}", op_cmd);
                 match op_cmd {
-                    OperationCommand::Unlock => update_state(|s| {
+                    OperationCommand::Unlock => update_state(|s: &mut OperationState| {
                         *s = OperationState::Active(ActiveState {
                             throttle: Throttle(0),
-                            speed_limit: 25,
-                            speed_mode: SpeedMode::Trip,
-                            headlight_mode: HeadlightMode::Auto,
+                            speed_limit: speed_limit_cfg.load().get_validated(),
+                            speed_mode: speed_mode_cfg.load(),
+                            headlight_mode: headlight_mode_cfg.load(),
                             headlight_config: HeadlightConfig {
                                 low: AmbientLight(10),
                                 high: AmbientLight(30),
@@ -196,20 +212,28 @@ async fn operation_task_() {
                             },
                         })
                     }),
-                    OperationCommand::Lock => update_state(|s| *s = OperationState::Locked),
+                    OperationCommand::Lock => {
+                        update_state(|s| *s = OperationState::Locked(Some(unlock_code_cfg.load())))
+                    }
                     OperationCommand::SetSpeedLimit(new_limit) => {
+                        let _ = speed_limit_cfg.write(&SpeedLimit::new_validated(new_limit)).await;
                         update_state(|s| s.update_if_active(|a| a.speed_limit = new_limit))
                     }
                     OperationCommand::SetSpeedMode(speed_mode) => {
+                        let _ = speed_mode_cfg.write(&speed_mode).await;
                         update_state(|s| s.update_if_active(|a| a.speed_mode = speed_mode))
                     }
-                    OperationCommand::SetHeadlightMode(headlight_mode) => update_state(|s| {
-                        s.update_if_active(|a| {
-                            a.headlight_mode = headlight_mode;
+                    OperationCommand::SetHeadlightMode(headlight_mode) => {
+                        let _ = headlight_mode_cfg.write(&headlight_mode).await;
+                        update_state(|s| {
+                            s.update_if_active(|a| {
+                                a.headlight_mode = headlight_mode;
+                            })
                         })
-                    }),
+                    },
                 }
 
+                defmt::info!("Handled op command");
                 state_updates.send(());
             }
         }

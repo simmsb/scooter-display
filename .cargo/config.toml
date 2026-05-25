@@ -1,6 +1,6 @@
 [target.thumbv7em-none-eabi]
 # runner = 'probe-rs run --chip AT32F415RCT7 --protocol swd'
-runner = 'probe-rs run --chip AT32F415RCT7 --probe 20b7:9db1:C3-20251207T143255Z:1:0 --protocol swd --always-print-stacktrace --speed 800'
+runner = 'probe-rs run --chip AT32F415RCT7 --probe 20b7:9db1:C3-20251207T143255Z:1:0 --protocol swd --always-print-stacktrace --speed 1600'
 rustflags = [
   # `flip-link` moves stack at the end of flash
   "-C", "link-arg=-Tdefmt.x",
