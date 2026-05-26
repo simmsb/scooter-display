@@ -20,11 +20,10 @@ pub fn root_view(state: &super::State) -> impl View<colour::ColorFormat, super::
     .padding(Edges::All, 5)
     .background_color(colour::BACKGROUND, RoundedRectangle::new(8))
     .captures_event(|e, _s: &mut super::State| {
-        if !crate::ON_BENCH {
-            if let Event::KeyDown(keys::POWER_HOLD) = e {
+        if !crate::ON_BENCH
+            && let Event::KeyDown(keys::POWER_HOLD) = e {
                 crate::scram::scram();
             }
-        }
 
         Some(e.clone())
     })

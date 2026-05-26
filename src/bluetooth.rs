@@ -197,10 +197,10 @@ async fn bluetooth_tx_(
                     battery_pct: s.battery_info.relative_soc,
                     some_pct_str: BluetoothString::new("1.2.0"),
                     unknown: 36,
-                    absolute_soh: s.battery_info.absolute_soh as u16,
+                    absolute_soh: s.battery_info.absolute_soh,
                     charge_state: 48,
                     unknown_2: 57,
-                    voltage: s.system_voltage.from_battery as u16,
+                    voltage: s.system_voltage.from_battery,
                     current: (s.battery_current.saturating_abs() / 100)
                         .saturating_cast_unsigned()
                         .saturating_truncate(),

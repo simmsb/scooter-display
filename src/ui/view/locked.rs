@@ -36,7 +36,7 @@ pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<
                     == state
                         .operation_state
                         .as_locked()
-                        .and_then(|x| x.clone())
+                        .and_then(|x| *x)
                         .unwrap_or_default()
                         .digits
                 {
