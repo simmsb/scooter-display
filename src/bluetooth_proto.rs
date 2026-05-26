@@ -289,7 +289,7 @@ pub enum OperationHandleCommand {
     SyncRTC {
         #[deku(endian = "little")]
         timestamp_millis: i64,
-    }
+    },
 }
 
 impl EndpointValue for OperationHandleCommand {

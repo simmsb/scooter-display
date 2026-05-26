@@ -5,8 +5,7 @@ use buoyant::{
     view::ViewLayout,
 };
 use embassy_futures::select;
-use embassy_time::{Duration, Instant, Ticker, Timer};
-use embedded_graphics::pixelcolor::RgbColor;
+use embassy_time::{Duration, Instant, Ticker};
 
 use crate::{
     buttons::{BHDuration, BHInstant, BUTTON_EVENTS, Button},

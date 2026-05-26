@@ -161,16 +161,24 @@ impl Setting {
                 const {
                     &[
                         SettingEntry::new("22", &|s| {
-                            let _ = s.next_operation_commands.push(OperationCommand::SetSpeedLimit(22));
+                            let _ = s
+                                .next_operation_commands
+                                .push(OperationCommand::SetSpeedLimit(22));
                         }),
                         SettingEntry::new("25", &|s| {
-                            let _ = s.next_operation_commands.push(OperationCommand::SetSpeedLimit(25));
+                            let _ = s
+                                .next_operation_commands
+                                .push(OperationCommand::SetSpeedLimit(25));
                         }),
                         SettingEntry::new("35", &|s| {
-                            let _ = s.next_operation_commands.push(OperationCommand::SetSpeedLimit(35));
+                            let _ = s
+                                .next_operation_commands
+                                .push(OperationCommand::SetSpeedLimit(35));
                         }),
                         SettingEntry::new("45", &|s| {
-                            let _ = s.next_operation_commands.push(OperationCommand::SetSpeedLimit(45));
+                            let _ = s
+                                .next_operation_commands
+                                .push(OperationCommand::SetSpeedLimit(45));
                         }),
                     ]
                 }

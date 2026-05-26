@@ -88,7 +88,6 @@ pub struct SystemState {
     pub ambient_light: AmbientLight,
 
     pub buttons: Buttons,
-
     // pub charges: [Option<BatteryChargeEntry>; 16],
 }
 
@@ -123,7 +122,6 @@ impl SystemState {
         throttle: Throttle::INITIAL,
         ambient_light: AmbientLight::INITIAL,
         buttons: Buttons::empty(),
-
         // charges: [const { None }; _],
     };
 
@@ -253,46 +251,45 @@ impl SystemState {
                 self.battery_info.charging = *battery_charging;
                 self.battery_info.temperature = *battery_temp;
             }
-            _ => {}
-            // CanMessage::BatteryChargeHistoryEntry(BatteryChargeHistoryEntry {
-            //     idx,
-            //     year,
-            //     month,
-            //     day,
-            //     hour,
-            //     minute,
-            //     second,
-            //     ..
-            // }) => {
-            //     let Some(d) = chrono::NaiveDate::from_ymd_opt(
-            //         *year as i32 + 2000,
-            //         *month as u32,
-            //         *day as u32,
-            //     ) else {
-            //         return;
-            //     };
-            //     let Some(t) =
-            //         chrono::NaiveTime::from_hms_opt(*hour as u32, *minute as u32, *second as u32)
-            //     else {
-            //         return;
-            //     };
-            //     let dt = chrono::NaiveDateTime::new(d, t);
+            _ => {} // CanMessage::BatteryChargeHistoryEntry(BatteryChargeHistoryEntry {
+                    //     idx,
+                    //     year,
+                    //     month,
+                    //     day,
+                    //     hour,
+                    //     minute,
+                    //     second,
+                    //     ..
+                    // }) => {
+                    //     let Some(d) = chrono::NaiveDate::from_ymd_opt(
+                    //         *year as i32 + 2000,
+                    //         *month as u32,
+                    //         *day as u32,
+                    //     ) else {
+                    //         return;
+                    //     };
+                    //     let Some(t) =
+                    //         chrono::NaiveTime::from_hms_opt(*hour as u32, *minute as u32, *second as u32)
+                    //     else {
+                    //         return;
+                    //     };
+                    //     let dt = chrono::NaiveDateTime::new(d, t);
 
-            //     let Some(entry) = self.charges.get_mut(*idx as usize) else {
-            //         return;
-            //     };
-            //     entry.get_or_insert_default().when = dt.and_utc();
-            // }
-            // CanMessage::BatteryChargeHistoryCharge(BatteryChargeHistoryCharge {
-            //     idx,
-            //     charge,
-            //     ..
-            // }) => {
-            //     let Some(entry) = self.charges.get_mut(*idx as usize) else {
-            //         return;
-            //     };
-            //     entry.get_or_insert_default().charge = *charge;
-            // }
+                    //     let Some(entry) = self.charges.get_mut(*idx as usize) else {
+                    //         return;
+                    //     };
+                    //     entry.get_or_insert_default().when = dt.and_utc();
+                    // }
+                    // CanMessage::BatteryChargeHistoryCharge(BatteryChargeHistoryCharge {
+                    //     idx,
+                    //     charge,
+                    //     ..
+                    // }) => {
+                    //     let Some(entry) = self.charges.get_mut(*idx as usize) else {
+                    //         return;
+                    //     };
+                    //     entry.get_or_insert_default().charge = *charge;
+                    // }
         }
     }
 }

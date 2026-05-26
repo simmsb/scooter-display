@@ -19,7 +19,13 @@ pub mod can;
 #[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod display;
 #[cfg(all(target_arch = "arm", target_os = "none"))]
+pub mod no_inline_future;
+#[cfg(all(target_arch = "arm", target_os = "none"))]
+pub mod noodle;
+#[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod operation;
+#[cfg(all(target_arch = "arm", target_os = "none"))]
+pub mod rtc;
 #[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod scram;
 #[cfg(all(target_arch = "arm", target_os = "none"))]
@@ -28,12 +34,6 @@ pub mod system_state;
 pub mod time_driver;
 #[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod ui;
-#[cfg(all(target_arch = "arm", target_os = "none"))]
-pub mod rtc;
-#[cfg(all(target_arch = "arm", target_os = "none"))]
-pub mod no_inline_future;
-#[cfg(all(target_arch = "arm", target_os = "none"))]
-pub mod noodle;
 
 pub const ON_BENCH: bool = true;
 

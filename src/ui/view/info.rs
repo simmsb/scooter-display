@@ -3,8 +3,7 @@ use core::fmt::Write;
 use buoyant::{
     event::Event,
     focus::{self, FocusAction},
-    if_view,
-    view::{VStack, View, prelude::*, scroll_view::ScrollBarVisibility},
+    view::{View, prelude::*, scroll_view::ScrollBarVisibility},
 };
 use strum::{EnumCount as _, VariantArray};
 
@@ -34,17 +33,6 @@ pub fn view(_state: &state::State) -> impl View<ColorFormat, state::State> + use
         }
         _ => Some(e.clone()),
     })
-}
-
-struct SettingEntry {
-    name: &'static str,
-    cb: &'static dyn Fn(&mut state::State),
-}
-
-impl SettingEntry {
-    const fn new(name: &'static str, cb: &'static impl Fn(&mut state::State)) -> Self {
-        Self { name, cb }
-    }
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, defmt::Format, strum::EnumCount, strum::VariantArray)]
@@ -117,7 +105,7 @@ impl Info {
 
 fn info_entry(info: Info) -> impl View<ColorFormat, state::State> + use<> {
     Button::new(
-        move |s: &mut state::State| {},
+        move |_s: &mut state::State| {},
         move |bs| {
             let (fg, bg) = if bs.is_focused() {
                 (colour::ON_TERTIARY_CONTAINER, colour::TERTIARY_CONTAINER)

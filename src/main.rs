@@ -2,7 +2,7 @@
 #![no_main]
 #![feature(impl_trait_in_assoc_type)]
 
-use at32f4xx_hal::{interrupt, spi::MODE_3, time::Hertz};
+use at32f4xx_hal::interrupt;
 use embassy_executor::{InterruptExecutor, SendSpawner, Spawner};
 
 use embassy_time::{Duration, TimeoutError, WithTimeout};
@@ -30,7 +30,7 @@ use defmt_rtt as _;
 use static_cell::StaticCell;
 
 use scooter_display::{
-    adc, bluetooth, buttons, can, display, noodle, operation, rtc, system_state, time_driver, ui
+    adc, bluetooth, buttons, can, display, noodle, operation, rtc, system_state, time_driver, ui,
 };
 
 static EXECUTOR_HIGH: InterruptExecutor = InterruptExecutor::new();

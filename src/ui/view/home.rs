@@ -9,7 +9,7 @@ use itertools::Itertools;
 use crate::{
     buttons_proto::Buttons,
     cfg::HeadlightMode,
-    operation::{self, OperationCommand},
+    operation::OperationCommand,
     ui::{
         colour::{self, ColorFormat},
         font, keys, state,

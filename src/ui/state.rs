@@ -13,12 +13,12 @@ pub enum Page {
 
 impl Page {
     pub fn handle_action(&self, action: PageAction) -> Option<Self> {
-        // TODO: this is dumb, refactor
+        // This is a bit redundant, but we might want to case it on the
+        // current page in the future
         match (self, action) {
             (_, PageAction::EnterSettings) => Some(Page::Settings),
             (_, PageAction::ExitSettings) => Some(Page::Home),
             (_, PageAction::EnterInfo) => Some(Page::Info),
-            (_, _) => None,
         }
     }
 }
