@@ -8,7 +8,7 @@ use crate::{
     buttons_proto::Buttons,
     can::CAN_TX_BUS,
     can_proto::{DisplaySpeedMode, DisplayThrottle},
-    cfg::{DEFAULT_SPEED_LIMIT, HeadlightMode, SpeedLimit, SpeedMode, Storable, UnlockCode},
+    cfg::{HeadlightMode, SpeedLimit, SpeedMode, Storable, UnlockCode},
 };
 
 pub static STATE_UPDATES: embassy_sync::watch::Watch<

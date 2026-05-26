@@ -194,7 +194,7 @@ fn body(state: &state::State) -> impl View<ColorFormat, ()> + use<> {
                 half_infocard(
                     format_args!(
                         "{}.{}",
-                        { (-state.system_state.battery_current / 1000) },
+                        { -state.system_state.battery_current / 1000  },
                         (((-state.system_state.battery_current) / 100) % 10) as u8
                     ),
                     "A",
