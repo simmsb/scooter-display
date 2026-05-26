@@ -53,6 +53,7 @@ derive-enum-rotate = { git = "https://github.com/simmsb/derive-enum-rotate", ver
 embedded-storage = "0.3.1"
 sequential-storage = { version = "7.2.0", default-features = false, features = ["defmt"] }
 paste = "1.0.15"
+itertools = { version = "0.14.0", default-features = false }
 
 [features]
 test = ["deku/descriptive-errors"]

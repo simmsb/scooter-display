@@ -41,7 +41,7 @@ pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<
                         .digits
                 {
                     state.locked_state.pin = Default::default();
-                    state.next_operation_command = Some(OperationCommand::Unlock);
+                    let _ = state.next_operation_commands.push(OperationCommand::Unlock);
                 }
             },
             |bs| {

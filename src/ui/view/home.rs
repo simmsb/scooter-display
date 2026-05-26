@@ -4,12 +4,16 @@ use buoyant::{
 };
 use chrono::Timelike;
 use heapless::HistoryBuf;
+use itertools::Itertools;
 
 use crate::{
-    buttons_proto::Buttons, cfg::HeadlightMode, operation::{self, OperationCommand}, ui::{
+    buttons_proto::Buttons,
+    cfg::HeadlightMode,
+    operation::{self, OperationCommand},
+    ui::{
         colour::{self, ColorFormat},
         font, keys, state,
-    }
+    },
 };
 
 #[derive(Default)]
@@ -37,40 +41,50 @@ pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<
                 if s.home_state
                     .unlock_history
                     .oldest_ordered()
-                    .zip(UNLOCK_SPEED.iter())
-                    .all(|(x, y)| x == y)
+                    .zip_longest(UNLOCK_SPEED.iter())
+                    .all(|e| match e {
+                        itertools::EitherOrBoth::Both(a, b) => a == b,
+                        _ => false,
+                    })
                 {
-                    s.no_speeding = false;
-
-                    // TODO: fetch this from settings
-                    s.next_operation_command = Some(OperationCommand::SetSpeedLimit(45));
+                    let _ = s
+                        .next_operation_commands
+                        .push(OperationCommand::UnlockSpeedLimit);
                 }
             }
 
             match e {
                 Event::KeyDown(keys::UP_CLICK) => {
-                    s.next_operation_command = s
+                    if let Some(o) = s
                         .operation_state
                         .as_active()
-                        .map(|o| OperationCommand::SetSpeedMode(o.speed_mode.increase()));
+                        .map(|o| OperationCommand::SetSpeedMode(o.speed_mode.increase()))
+                    {
+                        let _ = s.next_operation_commands.push(o);
+                    }
                 }
                 Event::KeyDown(keys::DOWN_CLICK) => {
-                    s.next_operation_command = s
+                    if let Some(o) = s
                         .operation_state
                         .as_active()
-                        .map(|o| OperationCommand::SetSpeedMode(o.speed_mode.decrease()));
+                        .map(|o| OperationCommand::SetSpeedMode(o.speed_mode.decrease()))
+                    {
+                        let _ = s.next_operation_commands.push(o);
+                    }
                 }
                 Event::KeyDown(keys::POWER_CLICK) => {
-                    s.next_operation_command = s
+                    if let Some(o) = s
                         .operation_state
                         .as_active()
-                        .map(|o| OperationCommand::SetHeadlightMode(o.headlight_mode.next()));
+                        .map(|o| OperationCommand::SetHeadlightMode(o.headlight_mode.next()))
+                    {
+                        let _ = s.next_operation_commands.push(o);
+                    }
                 }
                 Event::KeyDown(keys::CONFIRM_CLICK) => {
-                    s.no_speeding = true;
-                    s.next_operation_command = Some(OperationCommand::SetSpeedLimit(
-                        operation::DEFAULT_SPEED_LIMIT,
-                    ));
+                    let _ = s
+                        .next_operation_commands
+                        .push(OperationCommand::LockSpeedLimit);
                     return Some(e.clone());
                 }
                 Event::KeyDown(keys::CONFIRM_HOLD) => {
@@ -117,13 +131,24 @@ fn header(state: &state::State) -> impl View<ColorFormat, state::State> + use<> 
 
     let time = crate::rtc::get_datetime().time();
 
+    let (mode_fg, mode_bg) = if state
+        .operation_state
+        .as_active()
+        .map(|a| a.speed_limit_unlocked)
+        .unwrap_or(false)
+    {
+        (colour::ON_PRIMARY_CONTAINER, colour::PRIMARY_CONTAINER)
+    } else {
+        (colour::ON_BACKGROUND, colour::BACKGROUND)
+    };
+
     HStack::new((
         Text::new(speed_mode, &font::B612_REGULAR)
-            .foreground_color(colour::ON_BACKGROUND)
+            .foreground_color(mode_fg)
+            .padding(Edges::Horizontal, 4)
+            .background_color(mode_bg, RoundedRectangle::new(8))
             .flex_infinite_width(HorizontalAlignment::Leading),
-        Text::new(flash_state, &font::ICONS)
-            .foreground_color(colour::ON_BACKGROUND)
-            ,
+        Text::new(flash_state, &font::ICONS).foreground_color(colour::ON_BACKGROUND),
         Text::new_fmt::<16>(
             format_args!(
                 "{:02}:{:02}:{:02}",

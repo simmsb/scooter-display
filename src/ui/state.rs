@@ -37,12 +37,10 @@ pub struct State {
     pub home_state: super::view::home::State,
     pub settings_state: super::view::settings::State,
 
-    pub no_speeding: bool,
-
     pub system_state: SystemState,
     pub operation_state: OperationState,
     pub page_action: Option<PageAction>,
-    pub next_operation_command: Option<OperationCommand>,
+    pub next_operation_commands: heapless::Vec<OperationCommand, 3, u8>,
 }
 
 impl Default for State {
@@ -58,11 +56,10 @@ impl State {
             locked_state: Default::default(),
             home_state: Default::default(),
             settings_state: Default::default(),
-            no_speeding: true,
             system_state: crate::system_state::read_state(|s| s.clone()),
             operation_state: crate::operation::read_state(|s| s.clone()),
             page_action: None,
-            next_operation_command: None,
+            next_operation_commands: Default::default(),
         }
     }
 }

@@ -7,7 +7,7 @@ use buoyant::{
 use strum::{EnumCount as _, VariantArray};
 
 use crate::{
-    operation::{self, OperationCommand},
+    operation::OperationCommand,
     ui::{
         colour::{self, ColorFormat},
         font, keys,
@@ -17,7 +17,11 @@ use crate::{
 
 #[must_use]
 pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<> {
-    let no_speeding = state.no_speeding;
+    let no_speeding = state
+        .operation_state
+        .as_active()
+        .map(|a| !a.speed_limit_unlocked)
+        .unwrap_or(true);
     let open_menu = state.settings_state.open_menu;
 
     ScrollView::new(
@@ -157,16 +161,16 @@ impl Setting {
                 const {
                     &[
                         SettingEntry::new("22", &|s| {
-                            s.next_operation_command = Some(OperationCommand::SetSpeedLimit(22));
+                            let _ = s.next_operation_commands.push(OperationCommand::SetSpeedLimit(22));
                         }),
                         SettingEntry::new("25", &|s| {
-                            s.next_operation_command = Some(OperationCommand::SetSpeedLimit(25));
+                            let _ = s.next_operation_commands.push(OperationCommand::SetSpeedLimit(25));
                         }),
                         SettingEntry::new("35", &|s| {
-                            s.next_operation_command = Some(OperationCommand::SetSpeedLimit(35));
+                            let _ = s.next_operation_commands.push(OperationCommand::SetSpeedLimit(35));
                         }),
                         SettingEntry::new("45", &|s| {
-                            s.next_operation_command = Some(OperationCommand::SetSpeedLimit(45));
+                            let _ = s.next_operation_commands.push(OperationCommand::SetSpeedLimit(45));
                         }),
                     ]
                 }

@@ -1315,6 +1315,7 @@ dependencies = [
  "fugit 0.4.0",
  "glyphr",
  "heapless 0.9.3",
+ "itertools",
  "material-colors",
  "minicbor",
  "mipidsi",

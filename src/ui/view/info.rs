@@ -9,12 +9,11 @@ use buoyant::{
 use strum::{EnumCount as _, VariantArray};
 
 use crate::{
-    operation::{self, OperationCommand},
     system_state,
     ui::{
         colour::{self, ColorFormat},
         font, keys,
-        state::{self, PageAction},
+        state::{self},
     },
 };
 
@@ -89,7 +88,7 @@ impl Info {
     fn val(self) -> heapless::String<8, u8> {
         let mut s = heapless::String::new();
 
-        system_state::read_state(|st| match self {
+        let _ = system_state::read_state(|st| match self {
             Info::SystemVoltageController => {
                 s.write_fmt(format_args!("{}", st.system_voltage.from_controller))
             }

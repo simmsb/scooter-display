@@ -85,8 +85,10 @@ async fn ui_(mut display: crate::display::Display) {
 
     let app_start = Instant::now();
 
-    let app = static_cell::make_static!(buoyant::app::App::new(state::State::new(), target.size(), view::root_view)
-        .with_roles(Role::Button | Role::Container));
+    let app = static_cell::make_static!(
+        buoyant::app::App::new(state::State::new(), target.size(), view::root_view)
+            .with_roles(Role::Button | Role::Container)
+    );
 
     app.focus_forward();
 
@@ -169,13 +171,12 @@ async fn ui_(mut display: crate::display::Display) {
             defmt::trace!("Page: {}", state.page);
         }
 
-        if let Some(op_command) = app.state().next_operation_command {
-            defmt::trace!("op command: {}", op_command);
-            operation::OPERATION_COMMANDS.send(op_command).await;
-
-            app.state_mut().next_operation_command = None;
+        if !app.state().next_operation_commands.is_empty() {
+            for op_command in app.state_mut().next_operation_commands.drain(..) {
+                defmt::trace!("op command: {}", op_command);
+                operation::OPERATION_COMMANDS.send(op_command).await;
+            }
         }
-
         if app.should_redraw() || target.clear_animation_status() {
             defmt::trace!("Redrawing");
 

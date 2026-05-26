@@ -50,6 +50,8 @@ fn next_speed_mode_counter() -> u8 {
 pub enum OperationCommand {
     Unlock,
     Lock,
+    UnlockSpeedLimit,
+    LockSpeedLimit,
     SetSpeedLimit(u8),
     SetSpeedMode(SpeedMode),
     SetHeadlightMode(HeadlightMode),
@@ -121,6 +123,8 @@ pub struct ActiveState {
     /// sent to the controller
     pub speed_limit: u8,
 
+    pub speed_limit_unlocked: bool,
+
     pub speed_mode: SpeedMode,
 
     pub headlight_mode: HeadlightMode,
@@ -153,8 +157,10 @@ async fn operation_task_() {
     let unlock_code = UnlockCode::get_stored().await;
     defmt::info!("Loaded unlock code: {}", unlock_code);
 
-    update_state(|s| if s.is_locked() {
-        *s = OperationState::Locked(Some(unlock_code));
+    update_state(|s| {
+        if s.is_locked() {
+            *s = OperationState::Locked(Some(unlock_code));
+        }
     });
 
     state_updates.send(());
@@ -204,6 +210,7 @@ async fn operation_task_() {
                             *s = OperationState::Active(ActiveState {
                                 throttle: Throttle(0),
                                 speed_limit,
+                                speed_limit_unlocked: false,
                                 speed_mode,
                                 headlight_mode,
                                 headlight_config: HeadlightConfig {
@@ -213,7 +220,7 @@ async fn operation_task_() {
                                 },
                             })
                         })
-                    },
+                    }
                     OperationCommand::Lock => {
                         let unlock_code = UnlockCode::get_stored().await;
                         update_state(|s| *s = OperationState::Locked(Some(unlock_code)))
@@ -233,7 +240,17 @@ async fn operation_task_() {
                                 a.headlight_mode = headlight_mode;
                             })
                         })
-                    },
+                    }
+                    OperationCommand::UnlockSpeedLimit => update_state(|s| {
+                        s.update_if_active(|a| {
+                            a.speed_limit_unlocked = true;
+                        })
+                    }),
+                    OperationCommand::LockSpeedLimit => update_state(|s| {
+                        s.update_if_active(|a| {
+                            a.speed_limit_unlocked = false;
+                        })
+                    }),
                 }
 
                 defmt::info!("Handled op command");
@@ -246,9 +263,19 @@ async fn operation_task_() {
 async fn send_speed_and_throttle_can_messages() {
     let buttons = crate::system_state::read_state(|s| s.buttons);
 
-    if let Some((throttle, speed_limit, speed_mode, headlight)) = read_state(|s| {
-        s.read_if_active(|a| (a.throttle, a.speed_limit, a.speed_mode, a.headlight_on()))
-    }) {
+    if let Some((throttle, speed_limit, speed_limit_unlocked, speed_mode, headlight)) =
+        read_state(|s| {
+            s.read_if_active(|a| {
+                (
+                    a.throttle,
+                    a.speed_limit,
+                    a.speed_limit_unlocked,
+                    a.speed_mode,
+                    a.headlight_on(),
+                )
+            })
+        })
+    {
         let mut speed_mode_msg = DisplaySpeedMode::new(speed_mode, headlight);
 
         if speed_mode == SpeedMode::Walk {
@@ -259,10 +286,14 @@ async fn send_speed_and_throttle_can_messages() {
             .send(crate::can_proto::Sent::DisplaySpeedMode(speed_mode_msg))
             .await;
 
-        let speed_limit = match speed_limit {
-            0..=25 => 0,
-            26..=35 => 1,
-            _ => 2,
+        let speed_limit = if speed_limit_unlocked {
+            match speed_limit {
+                0..=25 => 0,
+                26..=35 => 1,
+                _ => 2,
+            }
+        } else {
+            DEFAULT_SPEED_LIMIT
         };
 
         let throttle_msg = DisplayThrottle::new(
