@@ -1004,6 +1004,7 @@ mod test {
             BatteryCapacityTemp {
                 capacity_mah: 20000,
                 battery_charged: true,
+                battery_charging: false,
                 battery_temp: 275
             }
         );
@@ -1014,6 +1015,7 @@ mod test {
             BatteryCapacityTemp {
                 capacity_mah: 20000,
                 battery_charged: false,
+                battery_charging: false,
                 battery_temp: 230
             }
         );

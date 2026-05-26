@@ -1,7 +1,5 @@
 use minicbor::{CborLen, Decode, Encode};
 
-use crate::operation::DEFAULT_SPEED_LIMIT;
-
 pub(crate) trait Storable:
     Default
     + PartialEq
@@ -79,6 +77,8 @@ macro_rules! saved_item {
         }
     };
 }
+
+pub const DEFAULT_SPEED_LIMIT: u8 = 22;
 
 #[derive(Encode, Decode, Copy, Clone, PartialEq, CborLen, defmt::Format)]
 pub struct SpeedLimit {

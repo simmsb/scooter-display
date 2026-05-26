@@ -8,10 +8,8 @@ use crate::{
     buttons_proto::Buttons,
     can::CAN_TX_BUS,
     can_proto::{DisplaySpeedMode, DisplayThrottle},
-    cfg::{HeadlightMode, SpeedLimit, SpeedMode, Storable, UnlockCode},
+    cfg::{DEFAULT_SPEED_LIMIT, HeadlightMode, SpeedLimit, SpeedMode, Storable, UnlockCode},
 };
-
-pub const DEFAULT_SPEED_LIMIT: u8 = 22;
 
 pub static STATE_UPDATES: embassy_sync::watch::Watch<
     embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
