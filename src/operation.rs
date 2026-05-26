@@ -291,7 +291,7 @@ async fn send_speed_and_throttle_can_messages() {
                 _ => 2,
             }
         } else {
-            DEFAULT_SPEED_LIMIT
+            0
         };
 
         let throttle_msg = DisplayThrottle::new(
