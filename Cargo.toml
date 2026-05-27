@@ -77,14 +77,14 @@ embassy-executor-timer-queue = { git = "https://github.com/embassy-rs/embassy" }
 #glyphr-macros = { path = "../glyphr/glyphr-macros" }
 #glyphr = { path = "../glyphr/glyphr" }
 
-[patch."https://github.com/simmsb/at32f4xx-hal"]
-at32f4xx-hal = { path = "../at32f4xx-hal" }
+# [patch."https://github.com/simmsb/at32f4xx-hal"]
+# at32f4xx-hal = { path = "../at32f4xx-hal" }
 
 # [patch."https://github.com/simmsb/at32f4xx-pac"]
 # at32f4xx-pac = { path = "../at32f4xx-pac" }
 
-[patch."https://github.com/simmsb/buoyant"]
-buoyant = { path = "../buoyant" }
+# [patch."https://github.com/simmsb/buoyant"]
+# buoyant = { path = "../buoyant" }
 
 [profile.dev]
 codegen-units = 1
