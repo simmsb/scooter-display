@@ -1,10 +1,9 @@
 use at32f4xx_hal::flash::FlashExt;
 use embassy_time::Timer;
 use embedded_storage_async::nor_flash::{NorFlash, ReadNorFlash};
-use minicbor::{Decoder, encode::write::Cursor};
 use sequential_storage::{
     cache::{KeyCacheImpl, NoCache},
-    map::{MapConfig, MapStorage, SerializationError, Value},
+    map::{MapConfig, MapStorage},
 };
 
 use crate::cfg::{HeadlightMode, SpeedLimit, SpeedMode, Storable, UnlockCode};
@@ -59,9 +58,9 @@ fn init_stored<T: Storable, S: NorFlash, C: KeyCacheImpl<u8>>(
     map_storage: &mut MapStorage<u8, S, C>,
     buf: &mut [u8],
 ) {
-    match embassy_futures::block_on(map_storage.fetch_item::<CborValue<T>>(buf, &T::ID)) {
+    match embassy_futures::block_on(map_storage.fetch_item::<T>(buf, &T::ID)) {
         Ok(Some(v)) => {
-            T::update_stored(v.0);
+            T::update_stored(v);
             let _ = T::take_if_changed();
         }
         Ok(None) => {
@@ -80,46 +79,11 @@ fn write_stored_if_changed<T: Storable, S: NorFlash, C: KeyCacheImpl<u8>>(
     buf: &mut [u8],
 ) {
     if let Some(v) = T::take_if_changed() {
-        if let Err(_) =
-            embassy_futures::block_on(map_storage.store_item(buf, &T::ID, &CborValue(v)))
-        {
+        if let Err(_) = embassy_futures::block_on(map_storage.store_item(buf, &T::ID, &v)) {
             defmt::warn!("Failed to write changed item for id {}", T::ID);
         } else {
             defmt::debug!("Updated entry for id {}", T::ID);
         }
-    }
-}
-
-struct CborValue<T>(T);
-
-impl<'a, T: Storable> Value<'a> for CborValue<T> {
-    fn serialize_into(
-        &self,
-        buffer: &mut [u8],
-    ) -> Result<usize, sequential_storage::map::SerializationError> {
-        let mut c = Cursor::new(buffer);
-        minicbor::encode(&self.0, &mut c).map_err(|_| SerializationError::BufferTooSmall)?;
-        Ok(c.position())
-    }
-
-    fn deserialize_from(
-        buffer: &'a [u8],
-    ) -> Result<(Self, usize), sequential_storage::map::SerializationError>
-    where
-        Self: Sized,
-    {
-        let mut decoder = Decoder::new(buffer);
-        let val = decoder.decode().map_err(|e| {
-            if e.is_end_of_input() {
-                SerializationError::BufferTooSmall
-            } else if e.is_type_mismatch() || e.is_tag_mismatch() {
-                SerializationError::InvalidFormat
-            } else {
-                SerializationError::InvalidData
-            }
-        })?;
-        let pos = decoder.position();
-        Ok((CborValue(val), pos))
     }
 }
 

@@ -1,13 +1,5 @@
-use minicbor::{CborLen, Decode, Encode};
-
 pub(crate) trait Storable:
-    Default
-    + PartialEq
-    + Clone
-    + minicbor::Encode<()>
-    + for<'a> minicbor::Decode<'a, ()>
-    + minicbor::CborLen<()>
-    + 'static
+    Default + PartialEq + Clone + for<'a> sequential_storage::map::Value<'a> + 'static
 {
     const ID: u8;
 
@@ -22,6 +14,8 @@ macro_rules! saved_item {
             embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
             Option<($ty, bool)>,
         > = embassy_sync::blocking_mutex::Mutex::new(None);
+
+        impl<'a> ::sequential_storage::map::PostcardValue<'a> for $ty {}
 
         paste::paste! {
             static [<WAKER_ $name>]: embassy_sync::waitqueue::AtomicWaker = embassy_sync::waitqueue::AtomicWaker::new();
@@ -80,9 +74,8 @@ macro_rules! saved_item {
 
 pub const DEFAULT_SPEED_LIMIT: u8 = 22;
 
-#[derive(Encode, Decode, Copy, Clone, PartialEq, CborLen, defmt::Format)]
+#[derive(Copy, Clone, PartialEq, defmt::Format, serde::Serialize, serde::Deserialize)]
 pub struct SpeedLimit {
-    #[n(0)]
     limit: u8,
 }
 
@@ -119,38 +112,34 @@ impl Default for SpeedLimit {
 }
 
 saved_item!(1, SPEED_LIMIT, SpeedLimit);
-// pub static SPEED_LIMIT: StorageListNode<SpeedLimit> = StorageListNode::new("cfg/speed_limit");
 
-#[derive(Encode, Decode, CborLen, defmt::Format, PartialEq, Eq, Copy, Clone, derive_enum_rotate::EnumRotate, Default)]
+#[derive(defmt::Format, PartialEq, Eq, Copy, Clone, derive_enum_rotate::EnumRotate, Default, serde::Serialize, serde::Deserialize)]
 #[rustfmt::skip]
 pub enum HeadlightMode {
     #[default]
-    #[n(0)] Auto,
-    #[n(1)] On,
-    #[n(2)] Off,
+    Auto,
+    On,
+    Off,
 }
 
 saved_item!(2, HEADLIGHT_MODE, HeadlightMode);
-// pub static HEADLIGHT_MODE: StorageListNode<HeadlightMode> =
-//     StorageListNode::new("cfg/headlight_mode");
 
-#[derive(Encode, Decode, CborLen, defmt::Format, PartialEq, Eq, Copy, Clone, derive_enum_rotate::EnumRotate, Default)]
+#[derive(defmt::Format, PartialEq, Eq, Copy, Clone, derive_enum_rotate::EnumRotate, Default, serde::Serialize, serde::Deserialize)]
 #[rustfmt::skip]
 pub enum SpeedMode {
     #[default]
-    #[n(0)] Walk,
-    #[n(1)] Eco,
-    #[n(2)] Trip,
-    #[n(3)] Sport,
+    Walk,
+    Eco,
+    Trip,
+    Sport,
 }
 
 saved_item!(3, SPEED_MODE, SpeedMode);
-// pub static SPEED_MODE: StorageListNode<SpeedMode> = StorageListNode::new("cfg/speed_mode");
 
-#[derive(Encode, Decode, CborLen, defmt::Format, PartialEq, Eq, Copy, Clone, Default)]
+#[derive(
+    defmt::Format, PartialEq, Eq, Copy, Clone, Default, serde::Serialize, serde::Deserialize,
+)]
 pub struct UnlockCode {
-    #[n(0)]
-    #[cbor(default)]
     pub digits: [crate::pin_digit::PinDigit; 4],
 }
 
