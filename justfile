@@ -23,6 +23,9 @@ docs PKG="scooter-display":
 test:
     cargo test --target aarch64-apple-darwin --no-default-features --features test
 
+binary:
+    env DEFMT_LOG=off cargo objcopy --release --no-default-features --features "prod-build" -Z build-std=core,alloc,panic_abort -Z build-std-features=compiler-builtins-mem,optimize_for_size -- -O binary firmware.bin
+
 [positional-arguments]
 @bloat *args="":
     cargo bloat --release -Z build-std=core,alloc,panic_abort -Z build-std-features=compiler-builtins-mem,optimize_for_size "$@"

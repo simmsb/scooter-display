@@ -61,6 +61,8 @@ app = ["dep:cortex-m-rt", "dep:cortex-m", "dep:at32f4xx-hal"]
 default = ["app", "panic-probe"]
 panic-probe = ["dep:panic-probe"]
 
+prod-build = ["app", "panic-scram"]
+
 # panic handler which sends immobiliser canbus messages and then resets.
 panic-scram = []
 

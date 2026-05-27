@@ -35,7 +35,10 @@ pub mod time_driver;
 #[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod ui;
 
-pub const ON_BENCH: bool = true;
+pub const ON_BENCH: bool = cfg_select! {
+    feature = "prod-build" => false,
+    _ => true,
+};
 
 pub mod averager;
 pub mod bluetooth_proto;
