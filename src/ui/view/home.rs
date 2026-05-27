@@ -212,8 +212,8 @@ fn body(state: &state::State) -> impl View<ColorFormat, ()> + use<> {
                     crate::ufmt!(
                         8,
                         "{}.{}",
-                        state.system_state.system_voltage.from_controller / 1000,
-                        (state.system_state.system_voltage.from_controller / 100) % 10
+                        state.system_state.system_voltage.from_battery / 1000,
+                        (state.system_state.system_voltage.from_battery / 100) % 10
                     ),
                     "V",
                     left_blinker,

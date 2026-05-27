@@ -21,6 +21,24 @@ impl PinDigit {
         char::from_digit(self as u32, 10).unwrap()
     }
 
+    pub fn from_char(c: char) -> Option<Self> {
+        let d = match c {
+            '0' => Self::D0,
+            '1' => Self::D1,
+            '2' => Self::D2,
+            '3' => Self::D3,
+            '4' => Self::D4,
+            '5' => Self::D5,
+            '6' => Self::D6,
+            '7' => Self::D7,
+            '8' => Self::D8,
+            '9' => Self::D9,
+            _ => return None,
+        };
+
+        Some(d)
+    }
+
     pub fn as_str(self) -> &'static str {
         match self {
             PinDigit::D0 => "0",

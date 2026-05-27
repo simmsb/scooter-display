@@ -5,9 +5,10 @@
 
 use crate::{
     bluetooth_proto::*,
-    cfg::{HeadlightMode, SpeedMode},
+    cfg::{HeadlightMode, SpeedMode, Storable, UnlockCode},
     no_inline_future::NoInlineFutExt as _,
     operation::{self, OPERATION_COMMANDS, OperationCommand},
+    pin_digit::PinDigit,
     system_state,
 };
 use at32f4xx_hal::{
@@ -210,7 +211,7 @@ async fn bluetooth_tx_(
                 Some(Response::SystemStatusUnknown(SystemStatusUnknownResponse))
             }
             Command::OperationCommand(cmd) => {
-                handle_operation_command(cmd).no_inline().await;
+                handle_operation_command(cmd).await;
                 Some(Response::OperationCommand(OperationCommandResponse))
             }
             Command::DeviceState(_) => {
@@ -245,7 +246,10 @@ async fn bluetooth_tx_(
                 })
             }
             Command::Odometer(_) => None,
-            Command::SettingsHandler(_) => Some(Response::SettingsHandler(SettingsHandlerResponse)),
+            Command::SettingsHandler(cmd) => {
+                handle_setting_command(cmd).await;
+                Some(Response::SettingsHandler(SettingsHandlerResponse))
+            }
             Command::SettingsReport(_) => Some(Response::SettingsReport(SettingsReportResponse {
                 activated: true,
                 display_lock: true,
@@ -312,6 +316,30 @@ async fn bluetooth_tx_(
 
             let _ = tx.write_all(to_send).no_inline().await;
         }
+    }
+}
+
+async fn handle_setting_command(cmd: &SettingsHandlerCommand) {
+    let op_command = match cmd {
+        SettingsHandlerCommand::SetUnlockCode(bluetooth_string) => {
+            let mut digits = [PinDigit::D0; 4];
+            for (dst, c) in digits.iter_mut().zip(bluetooth_string.0.chars()) {
+                let Some(d) = PinDigit::from_char(c) else {
+                    return;
+                };
+
+                *dst = d;
+            }
+
+            defmt::info!("Set unlock code to {}", digits);
+            UnlockCode::update_stored(UnlockCode { digits });
+            None
+        }
+        _ => None,
+    };
+
+    if let Some(op_command) = op_command {
+        OPERATION_COMMANDS.send(op_command).no_inline().await;
     }
 }
 
