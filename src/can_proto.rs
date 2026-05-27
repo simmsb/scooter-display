@@ -4,6 +4,8 @@ use crate::cfg::SpeedMode;
 
 #[derive(defmt::Format, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CanId {
+    TriggerUpdate = 900,
+
     // Controller -> display
     ControllerStatus = 512,
     ControllerSpeed = 513,
@@ -53,6 +55,18 @@ impl CanId {
 
 pub trait CanValue {
     fn can_id() -> CanId;
+}
+
+#[derive(deku::DekuRead, deku::DekuSize, defmt::Format, Clone, PartialEq, Eq)]
+#[cfg_attr(test, derive(deku::DekuWrite, Debug))]
+pub struct TriggerUpdate {
+    pub magic: DekuConst<{ &[0x43] }>,
+}
+
+impl CanValue for TriggerUpdate {
+    fn can_id() -> CanId {
+        CanId::TriggerUpdate
+    }
 }
 
 /// 512
@@ -569,6 +583,9 @@ impl CanValue for BatteryChargeHistoryCharge {
 
 #[derive(defmt::Format)]
 pub enum CanMessage {
+    // used to trigger update of display unit
+    TriggerUpdate(TriggerUpdate),
+
     // Controller -> display (decoders)
     ControllerStatus(ControllerStatus),
     ControllerSpeed(ControllerSpeed),
@@ -611,6 +628,10 @@ impl CanMessage {
                 .map(|(_, x)| x)
                 .map(CanMessage::ControllerSpeedLimit)
                 .map(Some),
+            900 => TriggerUpdate::from_bytes((data, 0))
+                .map(|(_, x)| x)
+                .map(CanMessage::TriggerUpdate)
+                .map(Some),
             1024 => BatteryCommandState::from_bytes((data, 0))
                 .map(|(_, x)| x)
                 .map(CanMessage::BatteryCommandState)
@@ -645,6 +666,7 @@ impl CanMessage {
 
     pub fn can_id(&self) -> u16 {
         match self {
+            CanMessage::TriggerUpdate(_) => 900,
             CanMessage::ControllerStatus(_) => 512,
             CanMessage::ControllerSpeed(_) => 513,
             CanMessage::ControllerTempMotor(_) => 514,

@@ -4,8 +4,9 @@ use embassy_futures::select;
 use embassy_time::Duration;
 
 use crate::{
-    can_proto::{self, DisplayChargeHistoryRequest},
+    can_proto::{self, CanMessage, DisplayChargeHistoryRequest, TriggerUpdate},
     no_inline_future::NoInlineFutExt,
+    scram,
 };
 
 pub static CAN_TX_BUS: embassy_sync::channel::Channel<
@@ -82,6 +83,12 @@ async fn can_rx_(mut rx: CanRx<'static>) {
         };
 
         defmt::trace!("Can RX: {}", parsed);
+
+        // if we see the update message, reboot so the bootloader can take over
+        // a firmware update
+        if let CanMessage::TriggerUpdate(TriggerUpdate { .. }) = &parsed {
+            scram::scram();
+        }
 
         state_can_ch.send(parsed).no_inline().await;
     }

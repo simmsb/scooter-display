@@ -63,7 +63,7 @@ async fn async_main_(
     low_spawner: Spawner,
     high_spawner: SendSpawner,
     mut dp: Peripherals,
-    mut cp: cortex_m::Peripherals,
+    cp: cortex_m::Peripherals,
     clocks: Clocks,
 ) {
     defmt::info!("Main stage startup begins");
