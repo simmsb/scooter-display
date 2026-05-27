@@ -12,11 +12,18 @@ rustflags = [
   "-C", "linker-plugin-lto",
   # "-C", "force-frame-pointers=yes",
   # "-C", "force-unwind-tables=yes",
+  # Enabling these reduces code size by 1k or so
+  "-Z", "merge-functions=aliases",
+  "-C", "link-arg=--icf=all",
+  "-C", "link-arg=-O3",
+  "-C", "llvm-args=-mergefunc-preserve-debug-info=false",
+  "-C", "llvm-args=-mergefunc-use-aliases",
+  "-C", "llvm-args=-enable-dfa-jump-thread",
 ]
 
 [build]
 target = "thumbv7em-none-eabi"
-rustflags = ["-C", "llvm-args=-enable-dfa-jump-thread"]
+# rustflags = ["-C", "llvm-args=-enable-dfa-jump-thread"]
 
 # [unstable]
 # build-std = ["core", "alloc", "panic_abort"]
