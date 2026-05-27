@@ -37,12 +37,12 @@ pub mod ui;
 
 pub const ON_BENCH: bool = true;
 
+pub mod averager;
 pub mod bluetooth_proto;
 pub mod buttons_proto;
 pub mod can_proto;
-pub mod framed_reader;
-
 pub mod cfg;
+pub mod framed_reader;
 pub mod pin_digit;
 
 #[macro_export]

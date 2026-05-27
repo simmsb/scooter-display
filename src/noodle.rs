@@ -1,12 +1,12 @@
 use at32f4xx_hal::flash::FlashExt;
-use embassy_time::{Instant, Timer};
+use embassy_time::Timer;
 use embedded_storage_async::nor_flash::{NorFlash, ReadNorFlash};
 use sequential_storage::{
     cache::{KeyCacheImpl, NoCache},
     map::{MapConfig, MapStorage},
 };
 
-use crate::cfg::{HeadlightMode, SpeedLimit, SpeedMode, Storable, UnlockCode};
+use crate::cfg::{HeadlightMode, Odometer, SpeedLimit, SpeedMode, Storable, UnlockCode};
 
 unsafe extern "C" {
     static __config_start: u32;
@@ -43,6 +43,7 @@ pub async fn worker_(flash: at32f4xx_hal::pac::FLASH) {
     init_stored::<HeadlightMode, _, _>(&mut map_storage, &mut buffer);
     init_stored::<SpeedMode, _, _>(&mut map_storage, &mut buffer);
     init_stored::<UnlockCode, _, _>(&mut map_storage, &mut buffer);
+    init_stored::<Odometer, _, _>(&mut map_storage, &mut buffer);
 
     loop {
         Timer::after_secs(10).await;
@@ -50,7 +51,7 @@ pub async fn worker_(flash: at32f4xx_hal::pac::FLASH) {
         write_stored_if_changed::<SpeedLimit, _, _>(&mut map_storage, &mut buffer);
         write_stored_if_changed::<HeadlightMode, _, _>(&mut map_storage, &mut buffer);
         write_stored_if_changed::<SpeedMode, _, _>(&mut map_storage, &mut buffer);
-        write_stored_if_changed::<UnlockCode, _, _>(&mut map_storage, &mut buffer);
+        write_stored_if_changed::<Odometer, _, _>(&mut map_storage, &mut buffer);
     }
 }
 

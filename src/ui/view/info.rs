@@ -1,5 +1,3 @@
-use core::fmt::Write;
-
 use buoyant::{
     event::Event,
     focus::{self, FocusAction},

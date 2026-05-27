@@ -20,6 +20,7 @@ use crate::{
 #[derive(Default)]
 pub struct State {
     unlock_history: HistoryBuf<u8, { UNLOCK_SPEED.len() }>,
+    info_to_show: InfoToShow,
 }
 
 const UNLOCK_SPEED: [u8; 6] = [
@@ -91,26 +92,15 @@ pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<
                 Event::KeyDown(keys::CONFIRM_HOLD) => {
                     s.page_action = Some(state::PageAction::EnterSettings)
                 }
+                Event::KeyDown(keys::DOWN_HOLD) => {
+                    s.home_state.info_to_show = s.home_state.info_to_show.next();
+                }
                 _ => return Some(e.clone()),
             }
 
             None
         })
 }
-
-// Things we need to show:
-//
-// 1. [X] Time
-// 2. [X] Speed mode
-// 3. [X] Current speed
-// 4. [X] Battery level
-// 4.1 [X] Battery voltage/
-// 5. [X] System current
-// 6. [ ] Odometer - eventually
-// 7. [X]Left/right blinker
-// 8. [X] Headlight status
-// 9. [X]Predicted range
-// 10. [ ] Throttle
 
 #[derive(PartialEq, Eq, Clone, Copy, defmt::Format, strum::EnumCount, strum::VariantArray)]
 enum TimePieceToShow {
@@ -236,7 +226,11 @@ fn body(state: &state::State) -> impl View<ColorFormat, ()> + use<> {
                     "A",
                     right_blinker,
                 ),
-                infocard(123_i16, "km Range", right_blinker),
+                infocard(
+                    state.home_state.info_to_show.value(state),
+                    state.home_state.info_to_show.message(),
+                    right_blinker,
+                ),
             ))
             .with_spacing(8),
         ))
@@ -325,4 +319,27 @@ fn infocard(value: i16, title: &'static str, blinker: bool) -> impl View<ColorFo
     .with_spacing(8)
     .frame_sized(130, 130)
     .background_color(bg_colour, RoundedRectangle::new(8))
+}
+
+#[derive(derive_enum_rotate::EnumRotate, Default)]
+enum InfoToShow {
+    #[default]
+    Range,
+    Odo,
+}
+
+impl InfoToShow {
+    fn message(&self) -> &'static str {
+        match self {
+            InfoToShow::Range => "km range",
+            InfoToShow::Odo => "km total",
+        }
+    }
+
+    fn value(&self, state: &state::State) -> i16 {
+        match self {
+            InfoToShow::Range => 123,
+            InfoToShow::Odo => state.system_state.odometer as i16,
+        }
+    }
 }

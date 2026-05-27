@@ -9,6 +9,7 @@ pub(crate) trait Storable:
     fn mark_unchanged();
     fn update_stored(val: Self);
     async fn get_stored() -> Self;
+    fn maybe_get_stored() -> Option<Self>;
 }
 
 macro_rules! saved_item {
@@ -63,7 +64,7 @@ macro_rules! saved_item {
                                     *prev = val;
                                 }
                             } else {
-                                *s = Some((val, true, Instant::now()));
+                                *s = Some((val, true, Instant::now().saturating_add(Duration::from_secs($timeout))));
                             }
                         })
                     }
@@ -80,6 +81,14 @@ macro_rules! saved_item {
                         }
                     })
                     .await
+                }
+
+                fn maybe_get_stored() -> Option<Self> {
+                    if let Some((v, _, _)) = $name.lock(|s| s.clone()) {
+                        Some(v)
+                    } else {
+                        None
+                    }
                 }
             }
         }
@@ -158,3 +167,15 @@ pub struct UnlockCode {
 }
 
 saved_item!(4, UNLOCK_CODE, UnlockCode, 10);
+
+#[derive(
+    defmt::Format, PartialEq, Eq, Copy, Clone, Default, serde::Serialize, serde::Deserialize,
+)]
+pub struct Odometer {
+    /// Total travelled distance, in hundreds of meters
+    pub total_distance: u32,
+}
+
+saved_item!(5, ODOMETER, Odometer, 300);
+
+// NOTE: make sure an entry is added in noodle.rs

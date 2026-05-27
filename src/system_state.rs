@@ -1,10 +1,13 @@
 use embassy_futures::select;
+use embassy_time::{Duration, Ticker};
 
 use crate::{
     adc::{AmbientLight, Throttle},
+    averager::Averager,
     buttons::BUTTON_STATE_WATCH,
     buttons_proto::Buttons,
     can_proto::*,
+    cfg::{Odometer, Storable},
 };
 
 pub static STATE_UPDATES: embassy_sync::watch::Watch<
@@ -72,6 +75,7 @@ pub struct BatteryChargeEntry {
 
 #[derive(PartialEq, Eq, defmt::Format, Clone)]
 pub struct SystemState {
+    /// motor speed, in deca meters per hour (speed / 100 = km/h)
     pub motor_speed: u16,
     pub headlight_on: bool,
     pub brake_light_on: bool,
@@ -89,6 +93,8 @@ pub struct SystemState {
 
     pub buttons: Buttons,
     // pub charges: [Option<BatteryChargeEntry>; 16],
+    /// in km
+    pub odometer: u16,
 }
 
 impl SystemState {
@@ -122,6 +128,7 @@ impl SystemState {
         throttle: Throttle::INITIAL,
         ambient_light: AmbientLight::INITIAL,
         buttons: Buttons::empty(),
+        odometer: 0,
         // charges: [const { None }; _],
     };
 
@@ -145,6 +152,11 @@ impl SystemState {
     }
 }
 
+#[derive(PartialEq, Eq, defmt::Format, Clone, Default)]
+struct PrivateState {
+    average_speed: Averager,
+}
+
 #[embassy_executor::task]
 pub async fn system_state_updater() {
     system_state_updater_().await
@@ -157,23 +169,34 @@ async fn system_state_updater_() {
     let state_updated = STATE_UPDATES.sender();
     let mut buttons_reader = BUTTON_STATE_WATCH.receiver().unwrap();
 
+    let mut update_private_state_ticker = Ticker::every(Duration::from_secs(30));
+
+    let mut private_state = PrivateState::default();
+
     loop {
-        let updated = match select::select4(
+        let updated = match select::select5(
             can_messages.receive(),
             bt_commands.receive(),
             adc_readings.changed(),
             buttons_reader.changed(),
+            update_private_state_ticker.next(),
         )
         .await
         {
-            select::Either4::First(can_msg) => {
+            select::Either5::First(can_msg) => {
                 update_state(|s| s.update_from_can_message(&can_msg));
+                private_state.update_from_can_message(&can_msg);
                 true
             }
-            select::Either4::Second(_) => false,
-            select::Either4::Third(reading) => update_state(|s| s.update_from_adc_reading(reading)),
-            select::Either4::Fourth(buttons) => {
+            select::Either5::Second(_) => false,
+            select::Either5::Third(reading) => update_state(|s| s.update_from_adc_reading(reading)),
+            select::Either5::Fourth(buttons) => {
                 update_state(|s| s.buttons = buttons);
+                true
+            }
+            select::Either5::Fifth(_) => {
+                private_state.periodic_update();
+                update_state(|s| private_state.update_public(s));
                 true
             }
         };
@@ -290,6 +313,62 @@ impl SystemState {
                     //     };
                     //     entry.get_or_insert_default().charge = *charge;
                     // }
+        }
+    }
+}
+
+impl PrivateState {
+    fn update_from_can_message(&mut self, can_msg: &CanMessage) {
+        match can_msg {
+            CanMessage::ControllerSpeed(controller_speed) => {
+                let current_speed = controller_speed.motor_speed;
+                self.average_speed.feed(current_speed as u64);
+            }
+            _ => {}
+        }
+    }
+
+    fn periodic_update(&mut self) {
+        // if the odometer is not yet loaded, defer to the next cycle
+        let Some(current) = Odometer::maybe_get_stored() else {
+            return;
+        };
+
+        // travelled is in km/h, we want to store m as our odometer
+        let (period, avg_speed) = self.average_speed.take();
+
+        let period_seconds = period.as_secs();
+
+        // 24km/h         -> 24 km/h
+        // * 10s (period) -> 24 km/h * 10s
+        // * 1000         -> 24_000 m/h * 10s
+        // / (60 * 60)    -> 6.6666 m/s * 10s
+        //                -> 66.666 m
+        // / 100          -> 0.6 (m/100)
+        //
+        // therefore:
+        // (avg_speed * period_seconds * 1000) / (60 * 60 * 100)
+        //
+        // factor to:
+        // (avg_speed * period_seconds) / (60 * 6)
+
+        let integrated = avg_speed
+            .saturating_mul(period_seconds)
+            .saturating_div(60 * 6);
+
+        defmt::debug!("Odo integrated: {}", integrated);
+
+        Odometer::update_stored(Odometer {
+            total_distance: current.total_distance.saturating_add(integrated as u32),
+        });
+    }
+
+    fn update_public(&self, s: &mut SystemState) {
+        // this is m
+        if let Some(current) = Odometer::maybe_get_stored() {
+            let odo_km = current.total_distance.saturating_div(1000);
+
+            s.odometer = odo_km as u16;
         }
     }
 }
