@@ -1,5 +1,5 @@
 use at32f4xx_hal::flash::FlashExt;
-use embassy_time::Timer;
+use embassy_time::{Instant, Timer};
 use embedded_storage_async::nor_flash::{NorFlash, ReadNorFlash};
 use sequential_storage::{
     cache::{KeyCacheImpl, NoCache},
@@ -61,7 +61,7 @@ fn init_stored<T: Storable, S: NorFlash, C: KeyCacheImpl<u8>>(
     match embassy_futures::block_on(map_storage.fetch_item::<T>(buf, &T::ID)) {
         Ok(Some(v)) => {
             T::update_stored(v);
-            let _ = T::take_if_changed();
+            let _ = T::take_if_changed_and_timedout();
         }
         r => {
             if r.is_err() {
@@ -70,7 +70,7 @@ fn init_stored<T: Storable, S: NorFlash, C: KeyCacheImpl<u8>>(
                 defmt::debug!("No stored entry found for id {}, loading default", T::ID);
             }
             T::update_stored(T::default());
-            let _ = T::take_if_changed();
+            let _ = T::mark_unchanged();
         }
     }
 }
@@ -79,7 +79,7 @@ fn write_stored_if_changed<T: Storable, S: NorFlash, C: KeyCacheImpl<u8>>(
     map_storage: &mut MapStorage<u8, S, C>,
     buf: &mut [u8],
 ) {
-    if let Some(v) = T::take_if_changed() {
+    if let Some(v) = T::take_if_changed_and_timedout() {
         if let Err(_) = embassy_futures::block_on(map_storage.store_item(buf, &T::ID, &v)) {
             defmt::warn!("Failed to write changed item for id {}", T::ID);
         } else {

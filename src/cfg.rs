@@ -1,18 +1,21 @@
+use embassy_time::{Duration, Instant};
+
 pub(crate) trait Storable:
     Default + PartialEq + Clone + for<'a> sequential_storage::map::Value<'a> + 'static
 {
     const ID: u8;
 
-    fn take_if_changed() -> Option<Self>;
+    fn take_if_changed_and_timedout() -> Option<Self>;
+    fn mark_unchanged();
     fn update_stored(val: Self);
     async fn get_stored() -> Self;
 }
 
 macro_rules! saved_item {
-    ($id:expr, $name:ident, $ty:ty) => {
+    ($id:expr, $name:ident, $ty:ty, $timeout:literal) => {
         static $name: embassy_sync::blocking_mutex::Mutex<
             embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
-            Option<($ty, bool)>,
+            Option<($ty, bool, Instant)>,
         > = embassy_sync::blocking_mutex::Mutex::new(None);
 
         impl<'a> ::sequential_storage::map::PostcardValue<'a> for $ty {}
@@ -23,14 +26,15 @@ macro_rules! saved_item {
             impl Storable for $ty {
                 const ID: u8 = $id;
 
-                fn take_if_changed() -> Option<Self> {
+                fn take_if_changed_and_timedout() -> Option<Self> {
+                    let now = Instant::now();
                     unsafe {
                         $name.lock_mut(|s| {
-                            let Some((x, v)) = s.as_mut() else {
+                            let Some((x, v, t)) = s.as_mut() else {
                                 return None;
                             };
 
-                            if *v {
+                            if *v && (now > *t) {
                                 *v = false;
                                 return Some(x.clone());
                             }
@@ -40,16 +44,26 @@ macro_rules! saved_item {
                     }
                 }
 
+                fn mark_unchanged() {
+                    unsafe {
+                        $name.lock_mut(|s| {
+                            if let Some((_, v, _)) = s.as_mut() {
+                                *v = false;
+                            };
+                        })
+                    }
+                }
+
                 fn update_stored(val: Self) {
                     unsafe {
                         $name.lock_mut(|s| {
-                            if let Some((prev, prev_changed)) = s.as_mut() {
+                            if let Some((prev, prev_changed, _)) = s.as_mut() {
                                 if &val != prev {
                                     *prev_changed = true;
                                     *prev = val;
                                 }
                             } else {
-                                *s = Some((val, true));
+                                *s = Some((val, true, Instant::now()));
                             }
                         })
                     }
@@ -58,7 +72,7 @@ macro_rules! saved_item {
 
                 async fn get_stored() -> Self {
                     core::future::poll_fn(|cx| {
-                        if let Some((v, _)) = $name.lock(|s| s.clone()) {
+                        if let Some((v, _, _)) = $name.lock(|s| s.clone()) {
                             core::task::Poll::Ready(v)
                         } else {
                             [<WAKER_ $name>].register(cx.waker());
@@ -111,7 +125,7 @@ impl Default for SpeedLimit {
     }
 }
 
-saved_item!(1, SPEED_LIMIT, SpeedLimit);
+saved_item!(1, SPEED_LIMIT, SpeedLimit, 10);
 
 #[derive(defmt::Format, PartialEq, Eq, Copy, Clone, derive_enum_rotate::EnumRotate, Default, serde::Serialize, serde::Deserialize)]
 #[rustfmt::skip]
@@ -122,7 +136,7 @@ pub enum HeadlightMode {
     Off,
 }
 
-saved_item!(2, HEADLIGHT_MODE, HeadlightMode);
+saved_item!(2, HEADLIGHT_MODE, HeadlightMode, 10);
 
 #[derive(defmt::Format, PartialEq, Eq, Copy, Clone, derive_enum_rotate::EnumRotate, Default, serde::Serialize, serde::Deserialize)]
 #[rustfmt::skip]
@@ -134,7 +148,7 @@ pub enum SpeedMode {
     Sport,
 }
 
-saved_item!(3, SPEED_MODE, SpeedMode);
+saved_item!(3, SPEED_MODE, SpeedMode, 10);
 
 #[derive(
     defmt::Format, PartialEq, Eq, Copy, Clone, Default, serde::Serialize, serde::Deserialize,
@@ -143,4 +157,4 @@ pub struct UnlockCode {
     pub digits: [crate::pin_digit::PinDigit; 4],
 }
 
-saved_item!(4, UNLOCK_CODE, UnlockCode);
+saved_item!(4, UNLOCK_CODE, UnlockCode, 10);
