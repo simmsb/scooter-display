@@ -27,7 +27,7 @@ dependencies = [
 [[package]]
 name = "at32f4xx-hal"
 version = "0.0.1"
-source = "git+https://github.com/simmsb/at32f4xx-hal#06d953acc0ed7a9ea52173513df98ae7983d9f82"
+source = "git+https://github.com/simmsb/at32f4xx-hal#3ff7b62cdb84034926afdc23ec7bd48078688527"
 dependencies = [
  "at32f4xx-pac",
  "bit_field",
@@ -140,7 +140,7 @@ checksum = "c2cc0e7b3545776f203a13f562db18101e0d81ca5333ce222356958be55f3afa"
 [[package]]
 name = "buoyant"
 version = "0.7.0-alpha.3"
-source = "git+https://github.com/simmsb/buoyant?branch=simmsb%2Fbuoyant-with-diffing#cbc1f3388116d6bc27c0c6fa285c9d940be7d0d4"
+source = "git+https://github.com/simmsb/buoyant?branch=simmsb%2Fbuoyant-with-diffing#71b4cc33ccdb25b0710aebdd24237fc88eef8cd8"
 dependencies = [
  "bitvec",
  "defmt 1.1.0",
@@ -504,7 +504,7 @@ checksum = "91622ff5e7162018101f2fea40d6ebf4a78bbe5a49736a2020649edf9693679e"
 [[package]]
 name = "embassy-executor"
 version = "0.10.0"
-source = "git+https://github.com/embassy-rs/embassy#1dec1214cad6f1a19b20b729ce0b89cdc7e06672"
+source = "git+https://github.com/embassy-rs/embassy#1d3c3dec8edbf37450d0174b312f8d3d6cc0bf12"
 dependencies = [
  "cordyceps",
  "cortex-m",
@@ -519,7 +519,7 @@ dependencies = [
 [[package]]
 name = "embassy-executor-macros"
 version = "0.8.0"
-source = "git+https://github.com/embassy-rs/embassy#1dec1214cad6f1a19b20b729ce0b89cdc7e06672"
+source = "git+https://github.com/embassy-rs/embassy#1d3c3dec8edbf37450d0174b312f8d3d6cc0bf12"
 dependencies = [
  "darling 0.20.11",
  "proc-macro2",
@@ -530,12 +530,12 @@ dependencies = [
 [[package]]
 name = "embassy-executor-timer-queue"
 version = "0.1.0"
-source = "git+https://github.com/embassy-rs/embassy#1dec1214cad6f1a19b20b729ce0b89cdc7e06672"
+source = "git+https://github.com/embassy-rs/embassy#1d3c3dec8edbf37450d0174b312f8d3d6cc0bf12"
 
 [[package]]
 name = "embassy-futures"
 version = "0.1.2"
-source = "git+https://github.com/embassy-rs/embassy#1dec1214cad6f1a19b20b729ce0b89cdc7e06672"
+source = "git+https://github.com/embassy-rs/embassy#1d3c3dec8edbf37450d0174b312f8d3d6cc0bf12"
 dependencies = [
  "defmt 1.1.0",
 ]
@@ -543,7 +543,7 @@ dependencies = [
 [[package]]
 name = "embassy-sync"
 version = "0.8.0"
-source = "git+https://github.com/embassy-rs/embassy#1dec1214cad6f1a19b20b729ce0b89cdc7e06672"
+source = "git+https://github.com/embassy-rs/embassy#1d3c3dec8edbf37450d0174b312f8d3d6cc0bf12"
 dependencies = [
  "cfg-if",
  "critical-section",
@@ -556,7 +556,7 @@ dependencies = [
 [[package]]
 name = "embassy-time"
 version = "0.5.1"
-source = "git+https://github.com/embassy-rs/embassy#1dec1214cad6f1a19b20b729ce0b89cdc7e06672"
+source = "git+https://github.com/embassy-rs/embassy#1d3c3dec8edbf37450d0174b312f8d3d6cc0bf12"
 dependencies = [
  "cfg-if",
  "critical-section",
@@ -572,7 +572,7 @@ dependencies = [
 [[package]]
 name = "embassy-time-driver"
 version = "0.2.2"
-source = "git+https://github.com/embassy-rs/embassy#1dec1214cad6f1a19b20b729ce0b89cdc7e06672"
+source = "git+https://github.com/embassy-rs/embassy#1d3c3dec8edbf37450d0174b312f8d3d6cc0bf12"
 dependencies = [
  "document-features",
 ]
@@ -580,7 +580,7 @@ dependencies = [
 [[package]]
 name = "embassy-time-queue-utils"
 version = "0.3.2"
-source = "git+https://github.com/embassy-rs/embassy#1dec1214cad6f1a19b20b729ce0b89cdc7e06672"
+source = "git+https://github.com/embassy-rs/embassy#1d3c3dec8edbf37450d0174b312f8d3d6cc0bf12"
 dependencies = [
  "embassy-executor-timer-queue",
  "heapless 0.9.3",
@@ -1042,9 +1042,9 @@ dependencies = [
 
 [[package]]
 name = "memchr"
-version = "2.8.0"
+version = "2.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8ca58f447f06ed17d5fc4043ce1b10dd205e060fb3ce5b979b8ed8e59ff3f79"
+checksum = "6b947ae49db0d222b1dbc6b113ce7248a3fc3a6ca21b696717bfc000ba4484d8"
 
 [[package]]
 name = "memo-map"

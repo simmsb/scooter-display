@@ -43,16 +43,14 @@ where
 ///
 /// UI views will use map_event to translate these into the correct focus action.
 mod keys {
-    use buoyant::event::Key;
-
-    pub const UP_CLICK: Key = Key::Character('0');
-    pub const UP_HOLD: Key = Key::Character('1');
-    pub const DOWN_CLICK: Key = Key::Character('2');
-    pub const DOWN_HOLD: Key = Key::Character('3');
-    pub const CONFIRM_CLICK: Key = Key::Character('4');
-    pub const CONFIRM_HOLD: Key = Key::Character('5');
-    pub const POWER_CLICK: Key = Key::Character('6');
-    pub const POWER_HOLD: Key = Key::Character('7');
+    pub const UP_CLICK: u8 = 0;
+    pub const UP_HOLD: u8 = 1;
+    pub const DOWN_CLICK: u8 = 2;
+    pub const DOWN_HOLD: u8 = 3;
+    pub const CONFIRM_CLICK: u8 = 4;
+    pub const CONFIRM_HOLD: u8 = 5;
+    pub const POWER_CLICK: u8 = 6;
+    pub const POWER_HOLD: u8 = 7;
 }
 
 fn map_event(

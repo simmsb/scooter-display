@@ -1,5 +1,5 @@
 use buoyant::{
-    event::{Event, Key},
+    event::{Event},
     view::{HStack, VStack, View, prelude::*},
 };
 use chrono::Timelike;
@@ -18,10 +18,10 @@ use crate::{
 
 #[derive(Default)]
 pub struct State {
-    unlock_history: HistoryBuf<Key, { UNLOCK_SPEED.len() }>,
+    unlock_history: HistoryBuf<u8, { UNLOCK_SPEED.len() }>,
 }
 
-const UNLOCK_SPEED: [Key; 6] = [
+const UNLOCK_SPEED: [u8; 6] = [
     keys::UP_CLICK,
     keys::DOWN_CLICK,
     keys::DOWN_CLICK,

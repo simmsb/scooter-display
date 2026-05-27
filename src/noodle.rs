@@ -63,13 +63,14 @@ fn init_stored<T: Storable, S: NorFlash, C: KeyCacheImpl<u8>>(
             T::update_stored(v);
             let _ = T::take_if_changed();
         }
-        Ok(None) => {
-            defmt::debug!("No stored entry found for id {}, loading default", T::ID);
+        r => {
+            if r.is_err() {
+                defmt::warn!("Failed to fetch entry for id {}, loading default", T::ID);
+            } else {
+                defmt::debug!("No stored entry found for id {}, loading default", T::ID);
+            }
             T::update_stored(T::default());
             let _ = T::take_if_changed();
-        }
-        Err(_) => {
-            defmt::warn!("Failed to fetch entry for id {}", T::ID);
         }
     }
 }
