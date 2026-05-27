@@ -44,3 +44,14 @@ pub mod framed_reader;
 
 pub mod cfg;
 pub mod pin_digit;
+
+#[macro_export]
+macro_rules! ufmt {
+    ($n:literal, $fmt:literal $(, $e:expr)* $(,)?) => {
+        {
+            let mut s = ::heapless::String::<$n, u8>::new();
+            let _ = ::ufmt::uwrite!(&mut s, $fmt $(, $e)*);
+            s
+        }
+    };
+}

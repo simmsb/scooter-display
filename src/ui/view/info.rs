@@ -78,24 +78,24 @@ impl Info {
 
         let _ = system_state::read_state(|st| match self {
             Info::SystemVoltageController => {
-                s.write_fmt(format_args!("{}", st.system_voltage.from_controller))
+                ufmt::uwrite!(&mut s, "{}", st.system_voltage.from_controller)
             }
             Info::SystemVoltageBattery => {
-                s.write_fmt(format_args!("{}", st.system_voltage.from_battery))
+                ufmt::uwrite!(&mut s, "{}", st.system_voltage.from_battery)
             }
-            Info::BatteryCurrent => s.write_fmt(format_args!("{}", st.battery_current)),
-            Info::BatteryCommand => s.write_fmt(format_args!("{}", st.battery_debug.command)),
-            Info::BatteryState => s.write_fmt(format_args!("{}", st.battery_debug.state)),
-            Info::BatteryRange => s.write_fmt(format_args!("{}", st.battery_debug.estimated_range)),
-            Info::BatteryRelSOC => s.write_fmt(format_args!("{}", st.battery_info.relative_soc)),
-            Info::BatteryAbsSOC => s.write_fmt(format_args!("{}", st.battery_info.absolute_soc)),
-            Info::BatteryRelSOH => s.write_fmt(format_args!("{}", st.battery_info.relative_soh)),
-            Info::BatteryAbsSOH => s.write_fmt(format_args!("{}", st.battery_info.absolute_soh)),
-            Info::BatteryCapacity => s.write_fmt(format_args!("{}", st.battery_info.capacity)),
-            Info::BatteryCharging => s.write_fmt(format_args!("{}", st.battery_info.charging)),
-            Info::BatteryCharged => s.write_fmt(format_args!("{}", st.battery_info.charged)),
+            Info::BatteryCurrent => ufmt::uwrite!(&mut s, "{}", st.battery_current),
+            Info::BatteryCommand => ufmt::uwrite!(&mut s, "{}", st.battery_debug.command),
+            Info::BatteryState => ufmt::uwrite!(&mut s, "{}", st.battery_debug.state),
+            Info::BatteryRange => ufmt::uwrite!(&mut s, "{}", st.battery_debug.estimated_range),
+            Info::BatteryRelSOC => ufmt::uwrite!(&mut s, "{}", st.battery_info.relative_soc),
+            Info::BatteryAbsSOC => ufmt::uwrite!(&mut s, "{}", st.battery_info.absolute_soc),
+            Info::BatteryRelSOH => ufmt::uwrite!(&mut s, "{}", st.battery_info.relative_soh),
+            Info::BatteryAbsSOH => ufmt::uwrite!(&mut s, "{}", st.battery_info.absolute_soh),
+            Info::BatteryCapacity => ufmt::uwrite!(&mut s, "{}", st.battery_info.capacity),
+            Info::BatteryCharging => ufmt::uwrite!(&mut s, "{}", st.battery_info.charging),
+            Info::BatteryCharged => ufmt::uwrite!(&mut s, "{}", st.battery_info.charged),
             Info::BatteryTemperature => {
-                s.write_fmt(format_args!("{}", st.battery_info.temperature))
+                ufmt::uwrite!(&mut s, "{}", st.battery_info.temperature)
             }
         });
 

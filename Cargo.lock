@@ -27,7 +27,6 @@ dependencies = [
 [[package]]
 name = "at32f4xx-hal"
 version = "0.0.1"
-source = "git+https://github.com/simmsb/at32f4xx-hal#3ff7b62cdb84034926afdc23ec7bd48078688527"
 dependencies = [
  "at32f4xx-pac",
  "bit_field",
@@ -140,7 +139,6 @@ checksum = "c2cc0e7b3545776f203a13f562db18101e0d81ca5333ce222356958be55f3afa"
 [[package]]
 name = "buoyant"
 version = "0.7.0-alpha.3"
-source = "git+https://github.com/simmsb/buoyant?branch=simmsb%2Fbuoyant-with-diffing#71b4cc33ccdb25b0710aebdd24237fc88eef8cd8"
 dependencies = [
  "bitvec",
  "defmt 1.1.0",
@@ -155,6 +153,7 @@ dependencies = [
  "paste",
  "rotate-enum",
  "u8g2-fonts",
+ "ufmt",
 ]
 
 [[package]]
@@ -942,6 +941,8 @@ dependencies = [
  "defmt 1.1.0",
  "hash32 0.3.1",
  "stable_deref_trait",
+ "ufmt",
+ "ufmt-write",
 ]
 
 [[package]]
@@ -1383,6 +1384,7 @@ dependencies = [
  "serde",
  "static_cell",
  "strum",
+ "ufmt",
 ]
 
 [[package]]
@@ -1742,6 +1744,33 @@ dependencies = [
  "embedded-graphics",
  "embedded-graphics-core",
 ]
+
+[[package]]
+name = "ufmt"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a64846ec02b57e9108d6469d98d1648782ad6bb150a95a9baac26900bbeab9d"
+dependencies = [
+ "ufmt-macros",
+ "ufmt-write",
+]
+
+[[package]]
+name = "ufmt-macros"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d337d3be617449165cb4633c8dece429afd83f84051024079f97ad32a9663716"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "ufmt-write"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e87a2ed6b42ec5e28cc3b94c09982969e9227600b2e3dcbc1db927a84c06bd69"
 
 [[package]]
 name = "unicode-ident"

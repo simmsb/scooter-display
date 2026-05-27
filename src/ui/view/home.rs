@@ -1,10 +1,11 @@
 use buoyant::{
-    event::{Event},
+    event::Event,
     view::{HStack, VStack, View, prelude::*},
 };
-use chrono::Timelike;
+use chrono::{NaiveTime, Timelike};
 use heapless::HistoryBuf;
 use itertools::Itertools;
+use strum::{EnumCount as _, VariantArray};
 
 use crate::{
     buttons_proto::Buttons,
@@ -111,6 +112,30 @@ pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<
 // 9. [X]Predicted range
 // 10. [ ] Throttle
 
+#[derive(PartialEq, Eq, Clone, Copy, defmt::Format, strum::EnumCount, strum::VariantArray)]
+enum TimePieceToShow {
+    Hour,
+    Minute,
+    Second,
+}
+
+impl TimePieceToShow {
+    fn show_colon(&self) -> bool {
+        match self {
+            Self::Second => false,
+            _ => true,
+        }
+    }
+
+    fn get(&self, t: NaiveTime) -> u8 {
+        match self {
+            TimePieceToShow::Hour => t.hour() as u8,
+            TimePieceToShow::Minute => t.minute() as u8,
+            TimePieceToShow::Second => t.second() as u8,
+        }
+    }
+}
+
 fn header(state: &state::State) -> impl View<ColorFormat, state::State> + use<> {
     let speed_mode = state
         .operation_state
@@ -149,16 +174,25 @@ fn header(state: &state::State) -> impl View<ColorFormat, state::State> + use<> 
             .background_color(mode_bg, RoundedRectangle::new(8))
             .flex_infinite_width(HorizontalAlignment::Leading),
         Text::new(flash_state, &font::ICONS).foreground_color(colour::ON_BACKGROUND),
-        Text::new_fmt::<16>(
-            format_args!(
-                "{:02}:{:02}:{:02}",
-                time.hour() as u8,
-                time.minute() as u8,
-                time.second() as u8
-            ),
-            &font::B612_REGULAR,
+        ForEach::<{ TimePieceToShow::COUNT }>::new_horizontal(
+            TimePieceToShow::VARIANTS,
+            move |piece| {
+                Text::new(
+                    {
+                        let num = piece.get(time);
+                        crate::ufmt!(
+                            3,
+                            "{}{}{}",
+                            (num / 10) % 10,
+                            num % 10,
+                            if piece.show_colon() { ":" } else { "" }
+                        )
+                    },
+                    &font::B612_REGULAR,
+                )
+                .foreground_color(colour::ON_BACKGROUND)
+            },
         )
-        .foreground_color(colour::ON_BACKGROUND)
         .flex_infinite_width(HorizontalAlignment::Trailing),
     ))
     .with_alignment(VerticalAlignment::Top)
@@ -175,7 +209,8 @@ fn body(state: &state::State) -> impl View<ColorFormat, ()> + use<> {
         HStack::new((
             VStack::new((
                 half_infocard(
-                    format_args!(
+                    crate::ufmt!(
+                        8,
                         "{}.{}",
                         state.system_state.system_voltage.from_controller / 1000,
                         (state.system_state.system_voltage.from_controller / 100) % 10
@@ -192,7 +227,8 @@ fn body(state: &state::State) -> impl View<ColorFormat, ()> + use<> {
             .with_spacing(8),
             VStack::new((
                 half_infocard(
-                    format_args!(
+                    crate::ufmt!(
+                        8,
                         "{}.{}",
                         { -state.system_state.battery_current / 1000 },
                         (((-state.system_state.battery_current) / 100) % 10) as u8
@@ -219,8 +255,9 @@ fn body(state: &state::State) -> impl View<ColorFormat, ()> + use<> {
 
 fn speedo(state: &state::State) -> impl View<ColorFormat, ()> + use<> {
     HStack::new((
-        Text::new_fmt::<10>(
-            format_args!(
+        Text::new(
+            crate::ufmt!(
+                3,
                 "{}.{}",
                 (state.system_state.motor_speed / 100) as u8,
                 ((state.system_state.motor_speed / 10) % 10) as u8,
@@ -239,7 +276,7 @@ fn speedo(state: &state::State) -> impl View<ColorFormat, ()> + use<> {
 }
 
 fn half_infocard(
-    args: core::fmt::Arguments,
+    s: heapless::String<8, u8>,
     title: &'static str,
     blinker: bool,
 ) -> impl View<ColorFormat, ()> + use<> {
@@ -255,7 +292,7 @@ fn half_infocard(
     };
 
     HStack::new((
-        Text::new_fmt::<8>(args, &font::B612_REGULAR_LARGE_NUMBERS).foreground_color(fg_colour),
+        Text::new(s, &font::B612_REGULAR_LARGE_NUMBERS).foreground_color(fg_colour),
         Text::new(title, &font::B612_REGULAR).foreground_color(fg_colour),
     ))
     .with_alignment(VerticalAlignment::Bottom)
@@ -278,8 +315,8 @@ fn infocard(value: i16, title: &'static str, blinker: bool) -> impl View<ColorFo
     };
 
     VStack::new((
-        Text::new_fmt::<4>(
-            format_args!("{}", value),
+        Text::new(
+            crate::ufmt!(8, "{}", value),
             &font::B612_REGULAR_VERY_LARGE_NUMBERS,
         )
         .foreground_color(fg_colour),
