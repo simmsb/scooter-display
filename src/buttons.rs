@@ -167,7 +167,7 @@ async fn buttons_eventer_() {
         // don't do multi-clicks
         click_timeout: BHDuration(Duration::MIN),
         hold_delay: BHDuration(Duration::from_millis(700)),
-        hold_interval: BHDuration(Duration::from_millis(500)),
+        hold_interval: BHDuration(Duration::from_millis(1000)),
         max_click_count: None,
     };
 

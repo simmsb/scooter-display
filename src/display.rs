@@ -8,6 +8,8 @@ use at32f4xx_hal::{
 use embedded_graphics::draw_target::DrawTarget;
 use mipidsi::interface::InterfaceKind;
 
+use crate::ON_BENCH;
+
 pub struct BusAsU8<const P: char, const SHIFT: u8, const MASK: u16> {
     inner: at32f4xx_hal::gpio::Bus<P, SHIFT, MASK, Output>,
 }
@@ -100,7 +102,11 @@ pub fn init(
         .invert_colors(mipidsi::options::ColorInversion::Inverted)
         .orientation(mipidsi::options::Orientation {
             // Deg0 for actual use, 180 on my desk
-            rotation: mipidsi::options::Rotation::Deg180,
+            rotation: if ON_BENCH {
+                mipidsi::options::Rotation::Deg180
+            } else {
+                mipidsi::options::Rotation::Deg0
+            },
             mirrored: true,
         })
         .color_order(mipidsi::options::ColorOrder::Bgr)

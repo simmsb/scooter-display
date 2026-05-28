@@ -107,7 +107,7 @@ async fn async_main_(
             // ensure it was pressed for two second (time it takes for controller to boot)
             if let Err(TimeoutError) = power_button
                 .wait_for_high()
-                .with_timeout(Duration::from_secs(2))
+                .with_timeout(Duration::from_secs(3))
                 .await
             {
                 break;
@@ -116,10 +116,12 @@ async fn async_main_(
     }
 
     defmt::info!("Starting peripheral init");
+
+    // one of these controls voltage on the USB port
     let mut system_power = gpioa.pa8.into_push_pull_output();
-    system_power.set_low();
+    system_power.set_high();
     let mut gpiof_4 = gpiof.pf4.into_push_pull_output();
-    gpiof_4.set_low();
+    gpiof_4.set_high();
 
     rtc::init_rtc(dp.ERTC, &mut dp.CRM, &mut dp.PWC);
 
