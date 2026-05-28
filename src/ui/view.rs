@@ -1,4 +1,7 @@
 use buoyant::{event::Event, match_view, view::prelude::*};
+use embassy_time::Duration;
+
+use crate::{can::LAST_SEEN_CAN_MESSAGE, operation::OperationCommand};
 
 use super::{colour, keys};
 
@@ -19,11 +22,16 @@ pub fn root_view(state: &super::State) -> impl View<colour::ColorFormat, super::
     })
     .padding(Edges::All, 5)
     .background_color(colour::BACKGROUND, RoundedRectangle::new(8))
-    .captures_event(|e, _s: &mut super::State| {
-        if !crate::ON_BENCH
-            && let Event::KeyDown(keys::POWER_HOLD) = e
-        {
-            crate::scram::scram();
+    .captures_event(|e, s: &mut super::State| {
+        if let Event::KeyDown(keys::POWER_HOLD) = e {
+            let last_can_message = LAST_SEEN_CAN_MESSAGE.lock(|c| *c);
+
+            // if we've not seen can messages recently, don't shut down from the
+            // button. (So that powering on doesn't trigger a shutdown too)
+            if last_can_message.elapsed() < Duration::from_secs(1) {
+                crate::scram::trigger_controller_shutdown();
+                let _ = s.next_operation_commands.push(OperationCommand::Lock);
+            }
         }
 
         Some(e.clone())

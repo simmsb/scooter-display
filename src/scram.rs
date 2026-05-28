@@ -2,7 +2,7 @@ use crate::can_proto::{self, CanValue};
 use at32f4xx_hal::can::{CanTx, Frame};
 use deku::DekuContainerWrite as _;
 
-pub fn scram() -> ! {
+pub fn trigger_controller_shutdown() {
     // the CAN bus should already be initialised, so just summon the rust wrapper.
     let mut can_tx = unsafe { core::mem::conjure_zst::<CanTx<'static>>() };
 
@@ -23,6 +23,9 @@ pub fn scram() -> ! {
     for _ in 0..8u8 {
         embassy_futures::block_on(can_tx.write(&frame));
     }
+}
 
+pub fn scram() -> ! {
+    trigger_controller_shutdown();
     cortex_m::peripheral::SCB::sys_reset();
 }

@@ -76,9 +76,39 @@ pub struct Display {
 }
 
 impl Display {
+    pub fn split(self) -> (InnerDisplay, DisplayBacklight) {
+        (
+            self.inner,
+            DisplayBacklight {
+                backlight: self.backlight,
+                // bad assumption
+                backlight_on: false,
+            },
+        )
+    }
+}
+
+pub struct DisplayBacklight {
+    backlight: Backlight,
+    backlight_on: bool,
+}
+
+impl DisplayBacklight {
     pub fn backlight_level(&mut self, level: u8) {
         let duty = self.backlight.get_max_duty().saturating_div(level as u16);
         self.backlight.set_duty(duty);
+    }
+
+    pub fn backlight_enable(&mut self, on: bool) {
+        if self.backlight_on != on {
+            self.backlight_on = on;
+
+            if on {
+                self.backlight.enable();
+            } else {
+                self.backlight.disable();
+            }
+        }
     }
 }
 

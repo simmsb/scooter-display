@@ -1,7 +1,7 @@
 use at32f4xx_hal::can::{CanRx, CanTx, Frame, Id, filter::Mask32};
 use embassy_executor::SendSpawner;
 use embassy_futures::select;
-use embassy_time::Duration;
+use embassy_time::{Duration, Instant};
 
 use crate::{
     can_proto::{self, CanMessage, DisplayChargeHistoryRequest, TriggerUpdate},
@@ -20,6 +20,11 @@ pub fn start_can(spawner: SendSpawner, tx: CanTx<'static>, rx: CanRx<'static>) {
     spawner.spawn(can_tx(tx).unwrap());
     spawner.spawn(can_periodic().unwrap());
 }
+
+pub static LAST_SEEN_CAN_MESSAGE: embassy_sync::blocking_mutex::Mutex<
+    embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
+    Instant,
+> = embassy_sync::blocking_mutex::Mutex::new(Instant::MIN);
 
 #[embassy_executor::task]
 async fn can_rx(rx: CanRx<'static>) {
@@ -57,6 +62,11 @@ async fn can_rx_(mut rx: CanRx<'static>) {
                 continue;
             }
         };
+
+        let now = Instant::now();
+        unsafe {
+            LAST_SEEN_CAN_MESSAGE.lock_mut(|t| *t = now);
+        }
 
         errors = 0;
 

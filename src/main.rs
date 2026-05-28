@@ -96,24 +96,24 @@ async fn async_main_(
 
     let mut delay = Timer::syst(cp.SYST, &clocks).delay();
 
-    let mut power_button = ExtiInput::new(gpioa.pa1.into_input().internal_pull_up(true), exti.ch1);
+    let power_button = ExtiInput::new(gpioa.pa1.into_input().internal_pull_up(true), exti.ch1);
 
-    if !scooter_display::ON_BENCH {
-        defmt::info!("Waiting for power press");
-        // wait for power button press
-        loop {
-            power_button.wait_for_low().await;
+    // if !scooter_display::ON_BENCH {
+    //     defmt::info!("Waiting for power press");
+    //     // wait for power button press
+    //     loop {
+    //         power_button.wait_for_low().await;
 
-            // ensure it was pressed for two second (time it takes for controller to boot)
-            if let Err(TimeoutError) = power_button
-                .wait_for_high()
-                .with_timeout(Duration::from_secs(3))
-                .await
-            {
-                break;
-            }
-        }
-    }
+    //         // ensure it was pressed for two second (time it takes for controller to boot)
+    //         if let Err(TimeoutError) = power_button
+    //             .wait_for_high()
+    //             .with_timeout(Duration::from_secs(3))
+    //             .await
+    //         {
+    //             break;
+    //         }
+    //     }
+    // }
 
     defmt::info!("Starting peripheral init");
 
@@ -131,7 +131,7 @@ async fn async_main_(
         .pwm_hz(Channel1::new(backlight_pwm_pin), 32.kHz(), &clocks)
         .split();
     backlight_pwm.set_duty(backlight_pwm.get_max_duty() / 8);
-    backlight_pwm.enable();
+    // backlight_pwm.enable();
 
     let display = display::init(
         gpioc.pc0.into_push_pull_output().speed(Speed::High),

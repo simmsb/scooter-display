@@ -171,10 +171,19 @@ async fn buttons_eventer_() {
         max_click_count: None,
     };
 
+    static CONFIG_POWER: butt_head::Config<BHDuration> = butt_head::Config {
+        active_low: false,
+        // don't do multi-clicks
+        click_timeout: BHDuration(Duration::MIN),
+        hold_delay: BHDuration(Duration::from_millis(700)),
+        hold_interval: BHDuration(Duration::from_secs(60)),
+        max_click_count: None,
+    };
+
     let mut up_state = ButtHead::new(&CONFIG);
     let mut down_state = ButtHead::new(&CONFIG);
     let mut confirm_state = ButtHead::new(&CONFIG);
-    let mut power_state = ButtHead::new(&CONFIG);
+    let mut power_state = ButtHead::new(&CONFIG_POWER);
 
     let handle_update_result =
         |upd: butt_head::UpdateResult<BHDuration, BHInstant>,

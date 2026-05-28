@@ -9,6 +9,7 @@ use embassy_time::{Duration, Instant, Ticker};
 
 use crate::{
     buttons::{BHDuration, BHInstant, BUTTON_EVENTS, Button},
+    can::LAST_SEEN_CAN_MESSAGE,
     operation::{self},
     system_state,
 };
@@ -77,8 +78,9 @@ fn map_event(
     }
 }
 
-async fn ui_(mut display: crate::display::Display) {
-    let mut target = EmbeddedGraphicsRenderTarget::new_hinted(&mut display.inner, colour::BLACK);
+async fn ui_(display: crate::display::Display) {
+    let (mut display, mut backlight) = display.split();
+    let mut target = EmbeddedGraphicsRenderTarget::new_hinted(&mut display, colour::BLACK);
 
     let app_start = Instant::now();
 
@@ -139,7 +141,15 @@ async fn ui_(mut display: crate::display::Display) {
             None
         };
 
-        let start = Instant::now();
+        let last_can_message = LAST_SEEN_CAN_MESSAGE.lock(|c| *c);
+        defmt::trace!("Last seen can: {}", last_can_message);
+        defmt::trace!("Last seen can el: {}", last_can_message.elapsed());
+
+        if last_can_message.elapsed() > Duration::from_secs(4) {
+            backlight.backlight_enable(false);
+        } else {
+            backlight.backlight_enable(true);
+        }
 
         if let Some((a, b)) = event.and_then(map_event) {
             app.send(a);
@@ -154,6 +164,7 @@ async fn ui_(mut display: crate::display::Display) {
         }
 
         app.set_time(app_start.elapsed().into());
+        let now = Instant::now();
 
         if let Some(action) = app.state().page_action {
             let current_page = app.state().page;
@@ -185,7 +196,7 @@ async fn ui_(mut display: crate::display::Display) {
 
             immediate_redraw = true;
 
-            defmt::trace!("Display draw took {}ms", start.elapsed().as_millis());
+            defmt::trace!("Display draw took {}ms", now.elapsed().as_millis());
         } else {
             immediate_redraw = false;
         }
