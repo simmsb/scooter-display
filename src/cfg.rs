@@ -1,5 +1,7 @@
 use embassy_time::{Duration, Instant};
 
+use crate::{bluetooth_proto::BluetoothString, pin_digit::PinDigit};
+
 pub(crate) trait Storable:
     Default + PartialEq + Clone + for<'a> sequential_storage::map::Value<'a> + 'static
 {
@@ -159,11 +161,30 @@ pub enum SpeedMode {
 
 saved_item!(3, SPEED_MODE, SpeedMode, 10);
 
-#[derive(
-    defmt::Format, PartialEq, Eq, Copy, Clone, Default, serde::Serialize, serde::Deserialize,
-)]
+#[derive(defmt::Format, PartialEq, Eq, Copy, Clone, serde::Serialize, serde::Deserialize)]
 pub struct UnlockCode {
-    pub digits: [crate::pin_digit::PinDigit; 4],
+    pub digits: [PinDigit; 4],
+}
+
+impl Default for UnlockCode {
+    fn default() -> Self {
+        Self {
+            digits: [PinDigit::D2, PinDigit::D7, PinDigit::D0, PinDigit::D8],
+        }
+    }
+}
+
+impl UnlockCode {
+    pub fn as_bt_string(&self) -> BluetoothString<4, u8> {
+        let mut s = heapless::String::new();
+
+        let _ = s.push(self.digits[0].as_char());
+        let _ = s.push(self.digits[1].as_char());
+        let _ = s.push(self.digits[2].as_char());
+        let _ = s.push(self.digits[3].as_char());
+
+        BluetoothString(s)
+    }
 }
 
 saved_item!(4, UNLOCK_CODE, UnlockCode, 10);

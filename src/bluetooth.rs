@@ -257,8 +257,12 @@ async fn bluetooth_tx_(
                 bluetooth_always_on: true,
                 language: 1,
                 brightness: 4,
-                unlock_code: BluetoothString::new("1234"),
-                activation_code: BluetoothString::new("0000"),
+                unlock_code: UnlockCode::maybe_get_stored()
+                    .map(|c| c.as_bt_string())
+                    .unwrap_or(BluetoothString::new("0000")),
+                activation_code: UnlockCode::maybe_get_stored()
+                    .map(|c| c.as_bt_string())
+                    .unwrap_or(BluetoothString::new("0000")),
                 speed_limit: 0,
                 unknown: 0,
                 speed_unit: 0,
