@@ -106,6 +106,10 @@ async fn ui_(display: crate::display::Display) {
 
     let mut ticker = Ticker::every(Duration::from_millis(500));
 
+    if crate::ON_BENCH {
+        backlight.backlight_enable(true);
+    }
+
     loop {
         let event = if !immediate_redraw {
             match select::select4(
@@ -145,10 +149,12 @@ async fn ui_(display: crate::display::Display) {
         defmt::trace!("Last seen can: {}", last_can_message);
         defmt::trace!("Last seen can el: {}", last_can_message.elapsed());
 
-        if last_can_message.elapsed() > Duration::from_secs(4) {
-            backlight.backlight_enable(false);
-        } else {
-            backlight.backlight_enable(true);
+        if !crate::ON_BENCH {
+            if last_can_message.elapsed() > Duration::from_secs(4) {
+                backlight.backlight_enable(false);
+            } else {
+                backlight.backlight_enable(true);
+            }
         }
 
         if let Some((a, b)) = event.and_then(map_event) {

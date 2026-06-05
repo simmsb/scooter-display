@@ -90,6 +90,7 @@ impl CanValue for ControllerStatus {
 #[cfg_attr(test, derive(deku::DekuWrite, Debug))]
 #[deku(bit_order = "lsb", endian = "little")]
 pub struct ControllerSpeed {
+    /// In km/h * 100
     #[deku(pad_bytes_after = "2")]
     pub motor_speed: u16,
 

@@ -46,3 +46,6 @@ macro_rules! colour {
 }
 
 include!(concat!(env!("OUT_DIR"), "/", "generated_colours.rs"));
+
+colour!(GREEN: 0, 200, 0);
+colour!(ON_GREEN: 255, 255, 255);

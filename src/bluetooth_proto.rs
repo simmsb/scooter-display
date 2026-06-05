@@ -539,7 +539,7 @@ pub enum Response {
     #[deku(id = 0x16)]
     Unknown22(Unknown22Response),
     #[deku(id = 0x17)]
-    UpdateProgress(UpdateProgressResponse),
+    UpdateProgress(SomeBTStatusResponse),
     #[deku(id = 0x18)]
     ConnectedStatus(ConnectedStatusResponse),
     #[deku(id = 0x19)]
@@ -757,7 +757,7 @@ impl EndpointValue for OperationCommandResponse {
 
 #[cfg_attr(test, derive(deku::DekuRead, PartialEq, Debug))]
 #[derive(defmt::Format, deku::DekuWrite, deku::DekuSize)]
-pub struct DeviceStateResponse {
+pub struct OriginalDeviceStateResponse {
     #[deku(bits = 1, pad_bits_before = "2")]
     pub temperature_high: bool,
 
@@ -799,14 +799,68 @@ pub struct DeviceStateResponse {
     pub find_my_status: u8,
 }
 
+impl EndpointValue for OriginalDeviceStateResponse {
+    fn endpoint_value() -> Endpoint {
+        Endpoint::DeviceState
+    }
+}
+
+#[cfg_attr(test, derive(deku::DekuRead, PartialEq, Debug))]
+#[derive(defmt::Format, deku::DekuWrite, deku::DekuSize)]
+pub struct DeviceStateResponse {
+    // must be 15 bytes
+    #[deku(bits = 1, pad_bits_before = "5")]
+    pub charging: bool,
+
+    #[deku(bits = 1)]
+    pub lights_on: bool,
+
+    #[deku(bits = 1)]
+    pub locked: bool,
+
+    #[deku(endian = "big")]
+    pub speed: u16,
+    #[deku(endian = "big")]
+    pub power_output: u16,
+
+    #[deku(endian = "big")]
+    pub range: u16,
+
+    pub throttle: u8,
+
+    pub driving_mode: u8,
+
+    #[deku(endian = "big")]
+    pub odo: u16,
+
+    #[deku(pad_bytes_after = "3")]
+    pub temp: u8,
+}
+
 impl EndpointValue for DeviceStateResponse {
     fn endpoint_value() -> Endpoint {
         Endpoint::DeviceState
     }
 }
 
+// BLUETOOTH_17_BUF[0] = (byte)(TIME_SPENT_TOTAL / 100 >> 8);
+// BLUETOOTH_17_BUF[1] = (byte)(TIME_SPENT_TOTAL / 100);
+// BLUETOOTH_17_BUF[2] = (byte)(TIME_SPENT_TOTAL / 1000 >> 0x10);
+// BLUETOOTH_17_BUF[3] = (byte)(TIME_SPENT_TOTAL / 1000 >> 8);
+// BLUETOOTH_17_BUF[4] = (byte)(TIME_SPENT_TOTAL / 1000);
+// BLUETOOTH_17_BUF[5] = (byte)(TIME_SPENT_IN_ECO / 1000 >> 0x10);
+// BLUETOOTH_17_BUF[6] = (byte)(TIME_SPENT_IN_ECO / 1000 >> 8);
+// BLUETOOTH_17_BUF[7] = (byte)(TIME_SPENT_IN_ECO / 1000);
+// BLUETOOTH_17_BUF[8] = (byte)(TIME_SPENT_IN_DRIVE / 1000 >> 0x10);
+// BLUETOOTH_17_BUF[9] = (byte)(TIME_SPENT_IN_DRIVE / 1000 >> 8);
+// BLUETOOTH_17_BUF[10] = (byte)(TIME_SPENT_IN_DRIVE / 1000);
+// BLUETOOTH_17_BUF[0xb] = (byte)(TIME_SPENT_IN_SPORT / 1000 >> 0x10);
+// BLUETOOTH_17_BUF[0xc] = (byte)(TIME_SPENT_IN_SPORT / 1000 >> 8);
+// BLUETOOTH_17_BUF[0xd] = (byte)(TIME_SPENT_IN_SPORT / 1000);
+
 #[derive(defmt::Format, deku::DekuWrite, deku::DekuSize)]
 pub struct OdometerResponse;
+
 impl EndpointValue for OdometerResponse {
     fn endpoint_value() -> Endpoint {
         Endpoint::Odometer
@@ -1033,8 +1087,13 @@ impl EndpointValue for Unknown22Response {
 }
 
 #[derive(defmt::Format, deku::DekuWrite, deku::DekuSize)]
-pub struct UpdateProgressResponse;
-impl EndpointValue for UpdateProgressResponse {
+pub struct SomeBTStatusResponse {
+    pub flag0: bool,
+    #[deku(pad_bytes_after = "6")]
+    pub flag1: bool,
+}
+
+impl EndpointValue for SomeBTStatusResponse {
     fn endpoint_value() -> Endpoint {
         Endpoint::UpdateProgress
     }
@@ -1172,17 +1231,17 @@ mod test {
     }
 
     #[test]
-    fn device_state() {
+    fn device_state_orig() {
         let serialized = &[
             0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x64, 0x00, 0x01, 0xFE,
             0xFF,
         ];
 
-        let parsed = DeviceStateResponse::try_from(serialized.as_slice()).unwrap();
+        let parsed = OriginalDeviceStateResponse::try_from(serialized.as_slice()).unwrap();
 
         assert_eq!(
             parsed,
-            DeviceStateResponse {
+            OriginalDeviceStateResponse {
                 temperature_high: false,
                 temperature_low: false,
                 charging: false,
@@ -1199,6 +1258,31 @@ mod test {
                 driving_mode: 1,
                 error_code: 254,
                 find_my_status: 255
+            }
+        )
+    }
+
+    #[test]
+    fn device_state() {
+        let serialized = &[
+            0x01, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10, 0x11, 0, 0, 0,
+        ];
+
+        let parsed = DeviceStateResponse::try_from(serialized.as_slice()).unwrap();
+
+        assert_eq!(
+            parsed,
+            DeviceStateResponse {
+                charging: false,
+                lights_on: false,
+                locked: true,
+                speed: 0x0102,
+                power_output: 0x0304,
+                range: 0x0506,
+                throttle: 0x07,
+                driving_mode: 0x08,
+                odo: 0x0910,
+                temp: 0x11,
             }
         )
     }

@@ -9,6 +9,7 @@ use crate::{
     no_inline_future::NoInlineFutExt as _,
     operation::{self, OPERATION_COMMANDS, OperationCommand},
     pin_digit::PinDigit,
+    rtc::get_datetime,
     system_state,
 };
 use at32f4xx_hal::{
@@ -114,7 +115,7 @@ async fn bluetooth_rx_(
             continue;
         };
 
-        defmt::trace!("Bluetooth RX: {} {}", command, buf);
+        defmt::info!("Bluetooth RX: {} {}", command, buf);
 
         let mut slot = cmd_sender.send().no_inline().await;
         *slot = command;
@@ -224,28 +225,24 @@ async fn bluetooth_tx_(
 
                 system_state::read_state(|s| {
                     Some(Response::DeviceState(DeviceStateResponse {
-                        temperature_high: false,
-                        temperature_low: false,
                         charging: s.battery_info.charging,
                         lights_on,
                         locked,
-                        powered_on: true,
                         speed: s.motor_speed / 10,
-                        power_output: (s.battery_current.saturating_abs() / 100)
+                        power_output: s
+                            .battery_current
+                            .saturating_abs()
                             .saturating_cast_unsigned()
                             .saturating_truncate(),
-                        eco_range: 999,
-                        tour_range: 999,
-                        sport_range: 999,
-                        range_factor: 100,
+                        range: s.predicted_range,
                         throttle: s.throttle.for_bluetooth(),
                         driving_mode,
-                        error_code: 0,
-                        find_my_status: 0,
+                        odo: s.odometer,
+                        temp: s.controller_temp,
                     }))
                 })
             }
-            Command::Odometer(_) => None,
+            Command::Odometer(_) => Some(Response::Odometer(OdometerResponse)),
             Command::SettingsHandler(cmd) => {
                 handle_setting_command(cmd).await;
                 Some(Response::SettingsHandler(SettingsHandlerResponse))
@@ -263,8 +260,8 @@ async fn bluetooth_tx_(
                 activation_code: UnlockCode::maybe_get_stored()
                     .map(|c| c.as_bt_string())
                     .unwrap_or(BluetoothString::new("0000")),
-                speed_limit: 0,
-                unknown: 0,
+                speed_limit: 1,
+                unknown: 12,
                 speed_unit: 0,
                 headlights_config: 2,
                 nfc_key_presence: 1,
@@ -280,26 +277,42 @@ async fn bluetooth_tx_(
             Command::CurrentSpeed(_) => None,
             Command::ChargeHistory(_) => None,
             Command::FailureCode(_) => None,
-            Command::BatteryAndActiveTime(_) => Some(Response::BatteryAndActiveTime(
-                BatteryAndActiveTimeResponse {
-                    timestamp: 123456,
-                    battery_pct: 99,
-                    time_spent_total: 12345678,
-                },
-            )),
+            Command::BatteryAndActiveTime(_) => {
+                let timestamp = get_datetime().and_utc().timestamp() as u32;
+                let battery_pct = system_state::read_state(|s| s.battery_info.relative_soc);
+                let odo = crate::cfg::Odometer::maybe_get_stored()
+                    .map(|o| o.km())
+                    .unwrap_or(0);
+                Some(Response::BatteryAndActiveTime(
+                    BatteryAndActiveTimeResponse {
+                        timestamp,
+                        battery_pct,
+                        time_spent_total: odo,
+                    },
+                ))
+            }
             Command::DriveModeHistory(_) => {
-                Some(Response::DriveModeHistory(DriveModeHistoryResponse {
-                    timestamp: 123456,
-                    battery_pct: 99,
-                    time_total: 69696969,
-                    time_total_eco: 0,
-                    time_total_drive: 0,
-                    time_total_sport: 696942069,
-                }))
+                let timestamp = get_datetime().and_utc().timestamp() as u32;
+                let odo = crate::cfg::Odometer::maybe_get_stored()
+                    .map(|o| o.km())
+                    .unwrap_or(0);
+                system_state::read_state(|s| {
+                    Some(Response::DriveModeHistory(DriveModeHistoryResponse {
+                        timestamp,
+                        battery_pct: s.battery_info.relative_soc,
+                        time_total: odo,
+                        time_total_eco: odo,
+                        time_total_drive: odo,
+                        time_total_sport: odo,
+                    }))
+                })
             }
             Command::Unknown21(_) => None,
             Command::Unknown22(_) => None,
-            Command::UpdateProgress(_) => None,
+            Command::UpdateProgress(_) => Some(Response::UpdateProgress(SomeBTStatusResponse {
+                flag0: false,
+                flag1: true,
+            })),
             Command::ConnectedStatus(_) => Some(Response::ConnectedStatus(ConnectedStatusResponse)),
             Command::InitiateBluetoothUpdate(_) => None,
         };
@@ -407,24 +420,22 @@ async fn bluetooth_push_task(
         // make this more frequent in real life
         let mut ticker = Ticker::every(Duration::from_secs(1));
 
+        const COMMANDS: [Command; 4] = [
+            Command::DeviceState(DeviceStateCommand),
+            Command::BatteryAndActiveTime(BatteryAndActiveTimeCommand),
+            Command::DriveModeHistory(DriveModeHistoryCommand),
+            Command::SystemStatus(SystemStatusCommand),
+            // Command::UpdateProgress(UpdateProgressCommand),
+        ];
+
         loop {
             ticker.next().await;
 
-            let mut slot = cmd_sender.send().no_inline().await;
-            *slot = Command::DeviceState(DeviceStateCommand);
-            slot.send_done();
-
-            let mut slot = cmd_sender.send().no_inline().await;
-            *slot = Command::BatteryAndActiveTime(BatteryAndActiveTimeCommand);
-            slot.send_done();
-
-            let mut slot = cmd_sender.send().no_inline().await;
-            *slot = Command::DriveModeHistory(DriveModeHistoryCommand);
-            slot.send_done();
-
-            let mut slot = cmd_sender.send().no_inline().await;
-            *slot = Command::SystemStatus(SystemStatusCommand);
-            slot.send_done();
+            for command in COMMANDS {
+                let mut slot = cmd_sender.send().no_inline().await;
+                *slot = command;
+                slot.send_done();
+            }
         }
     };
 

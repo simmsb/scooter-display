@@ -207,6 +207,11 @@ fn body(state: &state::State) -> impl View<ColorFormat, ()> + use<> {
                     ),
                     "V",
                     left_blinker,
+                    if state.system_state.battery_info.charging {
+                        Some((colour::ON_GREEN, colour::GREEN))
+                    } else {
+                        None
+                    },
                 ),
                 infocard(
                     state.system_state.battery_info.relative_soc as i16,
@@ -225,6 +230,7 @@ fn body(state: &state::State) -> impl View<ColorFormat, ()> + use<> {
                     ),
                     "A",
                     right_blinker,
+                    None,
                 ),
                 infocard(
                     state.home_state.info_to_show.value(state),
@@ -273,17 +279,15 @@ fn half_infocard(
     s: heapless::String<8, u8>,
     title: &'static str,
     blinker: bool,
+    colour_override: Option<(colour::ColorFormat, colour::ColorFormat)>,
 ) -> impl View<ColorFormat, ()> + use<> {
-    let fg_colour = if blinker {
-        colour::ON_TERTIARY
-    } else {
-        colour::ON_PRIMARY_CONTAINER
-    };
-    let bg_colour = if blinker {
-        colour::TERTIARY
-    } else {
-        colour::PRIMARY_CONTAINER
-    };
+    let (fg_colour, bg_colour) = colour_override.unwrap_or_else(|| {
+        if blinker {
+            (colour::ON_TERTIARY, colour::TERTIARY)
+        } else {
+            (colour::ON_PRIMARY_CONTAINER, colour::PRIMARY_CONTAINER)
+        }
+    });
 
     HStack::new((
         Text::new(s, &font::B612_REGULAR_LARGE_NUMBERS).foreground_color(fg_colour),
@@ -338,7 +342,7 @@ impl InfoToShow {
 
     fn value(&self, state: &state::State) -> i16 {
         match self {
-            InfoToShow::Range => 123,
+            InfoToShow::Range => state.system_state.predicted_range as i16,
             InfoToShow::Odo => state.system_state.odometer as i16,
         }
     }

@@ -197,6 +197,12 @@ pub struct Odometer {
     pub total_distance: u32,
 }
 
+impl Odometer {
+    pub fn km(&self) -> u32 {
+        self.total_distance.saturating_div(1000)
+    }
+}
+
 saved_item!(5, ODOMETER, Odometer, 300);
 
 // NOTE: make sure an entry is added in noodle.rs

@@ -1,5 +1,6 @@
 use embassy_futures::select;
 use embassy_time::{Duration, Ticker};
+use no_std_moving_average::MovingAverage;
 
 use crate::{
     adc::{AmbientLight, Throttle},
@@ -95,6 +96,9 @@ pub struct SystemState {
     // pub charges: [Option<BatteryChargeEntry>; 16],
     /// in km
     pub odometer: u16,
+
+    /// in km
+    pub predicted_range: u16,
 }
 
 impl SystemState {
@@ -129,6 +133,7 @@ impl SystemState {
         ambient_light: AmbientLight::INITIAL,
         buttons: Buttons::empty(),
         odometer: 0,
+        predicted_range: 0,
         // charges: [const { None }; _],
     };
 
@@ -152,9 +157,14 @@ impl SystemState {
     }
 }
 
-#[derive(PartialEq, Eq, defmt::Format, Clone, Default)]
+#[derive(Default)]
 struct PrivateState {
     average_speed: Averager,
+    average_current: Averager,
+    current_history: MovingAverage<u16, u32, 8>,
+    speed_history: MovingAverage<u16, u32, 8>,
+    moving_average_speed: u16,
+    predicted_range: u16,
 }
 
 #[embassy_executor::task]
@@ -324,18 +334,71 @@ impl PrivateState {
                 let current_speed = controller_speed.motor_speed;
                 self.average_speed.feed(current_speed as u64);
             }
+            CanMessage::BatteryVoltageCurrent(BatteryVoltageCurrent { current_ma, .. }) => {
+                // battery current is negative when draining
+                self.average_current
+                    .feed((-current_ma).saturating_cast_unsigned() as u64)
+            }
             _ => {}
         }
     }
 
     fn periodic_update(&mut self) {
+        self.periodic_update_speed();
+        self.periodic_update_range();
+    }
+
+    fn periodic_update_range(&mut self) {
+        let (period, avg_current_ma) = self.average_current.take();
+
+        let period_seconds = period.as_secs();
+
+        let integrated: u16 = avg_current_ma
+            .saturating_mul(period_seconds)
+            .saturating_div(60)
+            .saturating_truncate();
+
+        defmt::debug!("Current integrated: {}", integrated);
+
+        if integrated < 400 {
+            defmt::trace!("Not updating range, current under limit");
+            return;
+        }
+
+        let recent_avg_drain_ma_minutes: u16 = self.current_history.average(integrated);
+
+        let battery_remaining_ma = read_state(|s| s.battery_info.absolute_soc);
+
+        if recent_avg_drain_ma_minutes < 400 {
+            defmt::trace!("Not updating range, current under limit");
+            return;
+        }
+
+        let minutes_remaining = (battery_remaining_ma as u32)
+            .saturating_mul(60)
+            .saturating_div(recent_avg_drain_ma_minutes as u32);
+
+        // our average speed is in km/h
+        // minutes_ramining is m
+        //
+        // speed * minutes_remaining / 60 = km
+
+        self.predicted_range = (self.moving_average_speed as u32 * minutes_remaining)
+            .saturating_div(60)
+            .saturating_truncate();
+    }
+
+    fn periodic_update_speed(&mut self) {
         // if the odometer is not yet loaded, defer to the next cycle
         let Some(current) = Odometer::maybe_get_stored() else {
             return;
         };
 
-        // travelled is in km/h, we want to store m as our odometer
+        // avg_speed is in km/h * 100, we want to store m as our odometer
         let (period, avg_speed) = self.average_speed.take();
+        self.moving_average_speed = self
+            .speed_history
+            .average(avg_speed.saturating_div(100) as u16);
 
         let period_seconds = period.as_secs();
 
@@ -366,9 +429,9 @@ impl PrivateState {
     fn update_public(&self, s: &mut SystemState) {
         // this is m
         if let Some(current) = Odometer::maybe_get_stored() {
-            let odo_km = current.total_distance.saturating_div(1000);
-
-            s.odometer = odo_km as u16;
+            s.odometer = current.km() as u16;
         }
+
+        s.predicted_range = self.predicted_range;
     }
 }
