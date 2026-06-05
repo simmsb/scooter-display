@@ -41,7 +41,7 @@ no-std-moving-average = "0.3.0"
 panic-reset = { version = "0.1.1", optional = true }
 butt-head = { version = "0.2.0", features = ["defmt"] }
 strum = { version = "0.28.0", default-features = false, features = ["derive"] }
-chrono = { version = "0.4.44", default-features = false, features = ["defmt"] }
+chrono = { version = "0.4.45", default-features = false, features = ["defmt"] }
 once_cell = { version = "1.21.4", default-features = false, features = ["critical-section", "portable-atomic"] }
 pin-project-lite = "0.2.17"
 embedded-storage-async = "0.4.1"
