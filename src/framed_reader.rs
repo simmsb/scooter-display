@@ -12,6 +12,7 @@ pub enum ReadFramedError {
 pub enum WriteFramedError {
     NumericOverflow,
     BufferTooSmall,
+    SerdeError,
 }
 
 pub async fn read_framed<'buf, R: Read>(
@@ -67,6 +68,7 @@ pub async fn read_framed<'buf, R: Read>(
             received_crc,
             calculated_crc
         );
+        return Err(ReadFramedError::CrcMismatch);
     }
 
     Ok(&buf[0..len])
@@ -126,7 +128,8 @@ pub fn assemble_framed_deku<'a, T: deku::DekuWriter + deku::DekuSize>(
 
     let mut cursor = no_std_io::Cursor::new(&mut buf[2..]);
     let mut writer = Writer::new(&mut cursor);
-    body.to_writer(&mut writer, ()).unwrap();
+    body.to_writer(&mut writer, ())
+        .map_err(|_| WriteFramedError::SerdeError)?;
     let _ = writer.finalize();
     let body_len = writer.bits_written.div_ceil(8);
 

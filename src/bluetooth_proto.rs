@@ -807,6 +807,7 @@ impl EndpointValue for OriginalDeviceStateResponse {
 
 #[cfg_attr(test, derive(deku::DekuRead, PartialEq, Debug))]
 #[derive(defmt::Format, deku::DekuWrite, deku::DekuSize)]
+#[deku(endian = "big")]
 pub struct DeviceStateResponse {
     // must be 15 bytes
     #[deku(bits = 1, pad_bits_before = "5")]
@@ -818,23 +819,15 @@ pub struct DeviceStateResponse {
     #[deku(bits = 1)]
     pub locked: bool,
 
-    #[deku(endian = "big")]
     pub speed: u16,
-    #[deku(endian = "big")]
     pub power_output: u16,
-
-    #[deku(endian = "big")]
     pub range: u16,
-
     pub throttle: u8,
-
     pub driving_mode: u8,
-
-    #[deku(endian = "big")]
     pub odo: u16,
-
-    #[deku(pad_bytes_after = "3")]
     pub temp: u8,
+    pub ambient: u8,
+    pub soc: u16,
 }
 
 impl EndpointValue for DeviceStateResponse {
@@ -1036,7 +1029,7 @@ pub struct BatteryAndActiveTimeResponse {
     pub battery_pct: u8,
 
     #[deku(bytes = 3, endian = "big")]
-    pub time_spent_total: u32,
+    pub odometer: u32,
 }
 
 impl EndpointValue for BatteryAndActiveTimeResponse {
@@ -1265,7 +1258,8 @@ mod test {
     #[test]
     fn device_state() {
         let serialized = &[
-            0x01, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10, 0x11, 0, 0, 0,
+            0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10, 0x11, 0x12, 0x13, 0x14,
+            0x15,
         ];
 
         let parsed = DeviceStateResponse::try_from(serialized.as_slice()).unwrap();
@@ -1276,13 +1270,15 @@ mod test {
                 charging: false,
                 lights_on: false,
                 locked: true,
-                speed: 0x0102,
-                power_output: 0x0304,
-                range: 0x0506,
-                throttle: 0x07,
-                driving_mode: 0x08,
-                odo: 0x0910,
-                temp: 0x11,
+                speed: 0x0203,
+                power_output: 0x0405,
+                range: 0x0607,
+                throttle: 0x08,
+                driving_mode: 0x09,
+                odo: 0x1011,
+                temp: 0x12,
+                ambient: 0x13,
+                soc: 0x1415,
             }
         )
     }

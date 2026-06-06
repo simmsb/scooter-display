@@ -51,6 +51,7 @@ pub async fn worker_(flash: at32f4xx_hal::pac::FLASH) {
         write_stored_if_changed::<SpeedLimit, _, _>(&mut map_storage, &mut buffer);
         write_stored_if_changed::<HeadlightMode, _, _>(&mut map_storage, &mut buffer);
         write_stored_if_changed::<SpeedMode, _, _>(&mut map_storage, &mut buffer);
+        write_stored_if_changed::<UnlockCode, _, _>(&mut map_storage, &mut buffer);
         write_stored_if_changed::<Odometer, _, _>(&mut map_storage, &mut buffer);
     }
 }
@@ -71,7 +72,7 @@ fn init_stored<T: Storable, S: NorFlash, C: KeyCacheImpl<u8>>(
                 defmt::debug!("No stored entry found for id {}, loading default", T::ID);
             }
             T::update_stored(T::default());
-            let _ = T::mark_unchanged();
+            T::mark_unchanged();
         }
     }
 }

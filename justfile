@@ -23,8 +23,18 @@ docs PKG="scooter-display":
 test:
     cargo test --target aarch64-apple-darwin --no-default-features --features test
 
-binary:
+@binary:
     env DEFMT_LOG=off cargo objcopy --release --no-default-features --features "prod-build" -Z build-std=core,alloc,panic_abort -Z build-std-features=compiler-builtins-mem,optimize_for_size -- -O binary firmware.bin
+
+    printf "Firmware md5: "
+
+    if command -v md5sum >/dev/null 2>&1; then \
+        md5sum firmware.bin | awk '{print $1}'; \
+    elif command -v md5 >/dev/null 2>&1; then \
+        md5 -q firmware.bin; \
+    else \
+        echo "Error: Neither md5sum nor md5 command found." && exit 1; \
+    fi
 
 [positional-arguments]
 @bloat *args="":

@@ -40,6 +40,8 @@ pub const ON_BENCH: bool = cfg_select! {
     _ => true,
 };
 
+pub static GIT_HASH: &str = env!("GIT_HASH");
+
 pub mod averager;
 pub mod bluetooth_proto;
 pub mod buttons_proto;

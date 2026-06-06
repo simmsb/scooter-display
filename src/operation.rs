@@ -4,7 +4,7 @@ use embassy_futures::select;
 use embassy_time::{Duration, WithTimeout};
 
 use crate::{
-    adc::{AmbientLight, Throttle},
+    adc::Throttle,
     buttons_proto::Buttons,
     can::CAN_TX_BUS,
     can_proto::{DisplaySpeedMode, DisplayThrottle},
@@ -105,10 +105,10 @@ impl OperationState {
 #[derive(PartialEq, Eq, defmt::Format, Copy, Clone)]
 pub struct HeadlightConfig {
     /// Headlight will switch on when ambient light reads under this
-    pub low: AmbientLight,
+    pub low: u8,
 
     /// Headlight will switch off when ambient light reads over this
-    pub high: AmbientLight,
+    pub high: u8,
 
     pub auto_on: bool,
 }
@@ -188,10 +188,14 @@ async fn operation_task_() {
             select::Either4::Third(ambient) => update_state(|s| {
                 s.update_if_active(|a| {
                     if a.headlight_mode == HeadlightMode::Auto {
-                        if a.headlight_config.auto_on && ambient < a.headlight_config.low {
+                        if !a.headlight_config.auto_on && ambient.mapped < a.headlight_config.low {
                             a.headlight_config.auto_on = true;
-                        } else if !a.headlight_config.auto_on && ambient > a.headlight_config.high {
+                            state_updates.send(());
+                        } else if a.headlight_config.auto_on
+                            && ambient.mapped > a.headlight_config.high
+                        {
                             a.headlight_config.auto_on = false;
+                            state_updates.send(());
                         }
                     }
                 })
@@ -212,8 +216,8 @@ async fn operation_task_() {
                                 speed_mode,
                                 headlight_mode,
                                 headlight_config: HeadlightConfig {
-                                    low: AmbientLight(10),
-                                    high: AmbientLight(30),
+                                    low: 10,
+                                    high: 30,
                                     auto_on: false,
                                 },
                             })

@@ -175,7 +175,7 @@ pub async fn system_state_updater() {
 async fn system_state_updater_() {
     let can_messages = CAN_MESSAGES.receiver();
     let bt_commands = BT_COMMANDS.receiver();
-    let mut adc_readings = crate::adc::ADC_READINGS.receiver().unwrap();
+    let mut adc_readings = crate::adc::ADC_READINGS.subscriber().unwrap();
     let state_updated = STATE_UPDATES.sender();
     let mut buttons_reader = BUTTON_STATE_WATCH.receiver().unwrap();
 
@@ -187,7 +187,7 @@ async fn system_state_updater_() {
         let updated = match select::select5(
             can_messages.receive(),
             bt_commands.receive(),
-            adc_readings.changed(),
+            adc_readings.next_message_pure(),
             buttons_reader.changed(),
             update_private_state_ticker.next(),
         )
@@ -249,29 +249,29 @@ impl SystemState {
                 self.battery_debug = BatteryDebug {
                     command: *command,
                     state: *state,
-                    estimated_range: *estimated_range as u16,
+                    estimated_range: estimated_range.truncate(),
                 }
             }
             CanMessage::BatteryVoltageCurrent(BatteryVoltageCurrent {
                 voltage_mv,
                 current_ma,
             }) => {
-                self.system_voltage.from_battery = *voltage_mv as u16;
-                self.battery_current = *current_ma as i16;
+                self.system_voltage.from_battery = voltage_mv.truncate();
+                self.battery_current = current_ma.truncate();
             }
             CanMessage::BatteryChargeLevel(BatteryChargeLevel {
                 relative_soc,
                 absolute_soc_mah,
             }) => {
-                self.battery_info.relative_soc = *relative_soc as u8;
-                self.battery_info.absolute_soc = *absolute_soc_mah as u16;
+                self.battery_info.relative_soc = relative_soc.truncate();
+                self.battery_info.absolute_soc = absolute_soc_mah.truncate();
             }
             CanMessage::BatteryStateOfHealth(BatteryStateOfHealth {
                 relative_soh,
                 absolute_soh_mah,
             }) => {
                 self.battery_info.relative_soh = *relative_soh;
-                self.battery_info.absolute_soh = *absolute_soh_mah as u16;
+                self.battery_info.absolute_soh = absolute_soh_mah.truncate();
             }
             CanMessage::BatteryCapacityTemp(BatteryCapacityTemp {
                 capacity_mah,

@@ -3,7 +3,14 @@ use at32f4xx_hal::can::{CanTx, Frame};
 use deku::DekuContainerWrite as _;
 
 pub fn trigger_controller_shutdown() {
-    // the CAN bus should already be initialised, so just summon the rust wrapper.
+    // The CAN bus should already be initialised, so just summon the rust
+    // wrapper.
+    //
+    // If the CAN bus isn't initialised, then we can't have been
+    // sending messages to the controller.
+    //
+    // In such a case this will probably hang, or maybe fail silently, either
+    // way, nothing nasty can happen.
     let mut can_tx = unsafe { core::mem::conjure_zst::<CanTx<'static>>() };
 
     let mut buf = [0u8; 8];
@@ -21,7 +28,8 @@ pub fn trigger_controller_shutdown() {
     };
 
     for _ in 0..8u8 {
-        embassy_futures::block_on(can_tx.write(&frame));
+        let _ = can_tx.try_write(&frame);
+        cortex_m::asm::delay(500_000);
     }
 }
 

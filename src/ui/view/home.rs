@@ -281,7 +281,7 @@ fn half_infocard(
     blinker: bool,
     colour_override: Option<(colour::ColorFormat, colour::ColorFormat)>,
 ) -> impl View<ColorFormat, ()> + use<> {
-    let (fg_colour, bg_colour) = colour_override.unwrap_or_else(|| {
+    let (fg_colour, bg_colour) = colour_override.unwrap_or({
         if blinker {
             (colour::ON_TERTIARY, colour::TERTIARY)
         } else {

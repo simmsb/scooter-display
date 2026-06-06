@@ -1,3 +1,5 @@
+use std::process::Command;
+
 use material_colors::{color::Rgb, dynamic_color::Variant};
 
 const SOURCE_COLOUR: Rgb = Rgb::new(218, 189, 254);
@@ -12,6 +14,13 @@ macro_rules! add {
 }
 
 fn main() {
+    let output = Command::new("git")
+        .args(["rev-parse", "HEAD"])
+        .output()
+        .unwrap();
+    let git_hash = String::from_utf8(output.stdout).unwrap();
+    println!("cargo:rustc-env=GIT_HASH={}", &git_hash[..8]);
+
     let variant = &Variant::TonalSpot;
     let scheme = material_colors::dynamic_color::DynamicScheme::by_variant(
         SOURCE_COLOUR,

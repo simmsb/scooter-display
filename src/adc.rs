@@ -3,15 +3,16 @@ use at32f4xx_hal::{
     gpio::{Analog, Pin},
     pac::ADC1,
 };
-use embassy_futures::select;
 use embassy_time::Duration;
 use no_std_moving_average::MovingAverage;
 
-pub static ADC_READINGS: embassy_sync::watch::Watch<
+pub static ADC_READINGS: embassy_sync::pubsub::PubSubChannel<
     embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
     AdcReading,
     4,
-> = embassy_sync::watch::Watch::new();
+    4,
+    1,
+> = embassy_sync::pubsub::PubSubChannel::new();
 
 pub static THROTTLE_READINGS: embassy_sync::watch::Watch<
     embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
@@ -68,29 +69,36 @@ impl Throttle {
 }
 
 #[derive(Eq, PartialEq, PartialOrd, Ord, Default, defmt::Format, Clone, Copy)]
-pub struct AmbientLight(pub u8);
+pub struct AmbientLight {
+    // pub raw: u16,
+    pub mapped: u8,
+}
 
 impl AmbientLight {
-    pub const INITIAL: Self = Self(0);
+    // value the adc reads when light sensor is fully exposed
+    const MAX_RAW: u32 = 4096;
+
+    // value the adc reads when light sensor is covered
+    const MIN_RAW: u32 = 0;
+
+    // what should we consider max
+    const OUT_MAX: u32 = 64;
+
+    pub const INITIAL: Self = Self {
+        // raw: Self::MIN_RAW as u16,
+        mapped: 0,
+    };
 
     fn from_raw(raw: u16) -> Self {
-        // value the adc reads when light sensor is fully exposed
-        const MAX_RAW: u32 = 4096;
-
-        // value the adc reads when light sensor is covered
-        const MIN_RAW: u32 = 900;
-
-        // what should we consider max
-        const OUT_MAX: u32 = 64;
-
-        Self(
-            (raw as u32)
-                .clamp(MIN_RAW, MAX_RAW)
-                .saturating_sub(MIN_RAW)
-                .saturating_mul(OUT_MAX)
-                .saturating_div(MAX_RAW - MIN_RAW)
+        Self {
+            // raw,
+            mapped: (raw as u32)
+                .clamp(Self::MIN_RAW, Self::MAX_RAW)
+                .saturating_sub(Self::MIN_RAW)
+                .saturating_mul(Self::OUT_MAX)
+                .saturating_div(Self::MAX_RAW - Self::MIN_RAW)
                 .saturating_truncate(),
-        )
+        }
     }
 }
 
@@ -105,11 +113,10 @@ async fn adc_task_(
     // unknown/ battery voltage
     _ch15: Pin<'C', 5, Analog>,
 ) {
-    let mut sample_ambient_light_ticker = embassy_time::Ticker::every(Duration::from_secs(200));
-    let mut sample_throttle_ticker = embassy_time::Ticker::every(Duration::from_millis(100));
+    let mut do_sample_ticker = embassy_time::Ticker::every(Duration::from_millis(100));
     // let mut sample_ch15_ticker = embassy_time::Ticker::every(Duration::from_secs(1));
 
-    let state_reading_ch = ADC_READINGS.sender();
+    let state_reading_ch = ADC_READINGS.publisher().unwrap();
     let throttle_reading_ch = THROTTLE_READINGS.sender();
     let ambient_reading_ch = AMBIENT_READINGS.sender();
 
@@ -117,33 +124,23 @@ async fn adc_task_(
     let mut ambient_light_averager = MovingAverage::<u16, u32, 16>::new();
 
     loop {
-        match select::select(
-            sample_ambient_light_ticker.next(),
-            sample_throttle_ticker.next(),
-            // sample_ch15_ticker.next(),
-        )
-        .await
-        {
-            select::Either::First(_) => {
-                defmt::trace!("ADC measuring ambient");
-                let val = adc.convert(&ch12, SampleTime::Cycles_480).await;
-                let avg = ambient_light_averager.average(val);
-                let ambient_light = AmbientLight::from_raw(avg);
-                state_reading_ch.send(AdcReading::AmbientLight(ambient_light));
-                ambient_reading_ch.send(ambient_light);
-            }
-            select::Either::Second(_) => {
-                defmt::trace!("ADC measuring throttle");
-                let val = adc.convert(&ch13, SampleTime::Cycles_480).await;
-                let avg = throttle_averager.average(val);
-                let thr = Throttle::from_raw(avg);
-                state_reading_ch.send(AdcReading::Throttle(thr));
-                throttle_reading_ch.send(thr);
-            } // Either3::Third(_) => {
-              //     defmt::info!("ADC measuring unknown");
-              //     let _val = adc.convert(&ch15, SampleTime::Cycles_480).await;
-              // }
-        }
+        do_sample_ticker.next().await;
+
+        defmt::trace!("ADC measuring ambient");
+        let val = adc.convert(&ch12, SampleTime::Cycles_480).await;
+        let avg = ambient_light_averager.average(val);
+        let ambient_light = AmbientLight::from_raw(avg);
+        state_reading_ch
+            .publish(AdcReading::AmbientLight(ambient_light))
+            .await;
+        ambient_reading_ch.send(ambient_light);
+
+        defmt::trace!("ADC measuring throttle");
+        let val = adc.convert(&ch13, SampleTime::Cycles_480).await;
+        let avg = throttle_averager.average(val);
+        let thr = Throttle::from_raw(avg);
+        state_reading_ch.publish(AdcReading::Throttle(thr)).await;
+        throttle_reading_ch.send(thr);
     }
 }
 

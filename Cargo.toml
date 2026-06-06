@@ -32,7 +32,7 @@ embassy-time = { version = "0.5.1", features = ["defmt", "defmt-timestamp-uptime
 buoyant = { git = "https://github.com/simmsb/buoyant", version = "0.7.0-alpha.3", branch = "simmsb/buoyant-with-diffing" }
 heapless = { version = "0.9.3", features = ["defmt", "ufmt"] }
 glyphr = { version = "0.5.1", default-features = false, git = "https://github.com/simmsb/glyphr" }
-embedded-io-async = "0.7.0"
+embedded-io-async = { version = "0.7.0", features = ["defmt"] }
 embedded-hal-nb = "1.0.0"
 crc = "3.4.0"
 deku = { version = "0.20.3", default-features = false, features = ["bits"] }

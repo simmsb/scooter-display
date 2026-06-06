@@ -238,7 +238,11 @@ async fn bluetooth_tx_(
                         throttle: s.throttle.for_bluetooth(),
                         driving_mode,
                         odo: s.odometer,
-                        temp: s.controller_temp,
+                        temp: (s.battery_info.temperature / 10)
+                            .saturating_cast_unsigned()
+                            .saturating_truncate(),
+                        ambient: s.ambient_light.mapped,
+                        soc: s.battery_info.absolute_soc,
                     }))
                 })
             }
@@ -287,7 +291,7 @@ async fn bluetooth_tx_(
                     BatteryAndActiveTimeResponse {
                         timestamp,
                         battery_pct,
-                        time_spent_total: odo,
+                        odometer: odo,
                     },
                 ))
             }
@@ -331,7 +335,9 @@ async fn bluetooth_tx_(
 
             defmt::trace!("BT Response: {} {}", resp, to_send);
 
-            let _ = tx.write_all(to_send).no_inline().await;
+            if let Err(err) = tx.write_all(to_send).no_inline().await {
+                defmt::error!("BT Tx err: {}", err);
+            }
         }
     }
 }
@@ -340,8 +346,15 @@ async fn handle_setting_command(cmd: &SettingsHandlerCommand) {
     let op_command = match cmd {
         SettingsHandlerCommand::SetUnlockCode(bluetooth_string) => {
             let mut digits = [PinDigit::D0; 4];
+
+            if bluetooth_string.0.len() != 4 {
+                defmt::warn!("BT tried to set pin shorter than 4");
+                return;
+            }
+
             for (dst, c) in digits.iter_mut().zip(bluetooth_string.0.chars()) {
                 let Some(d) = PinDigit::from_char(c) else {
+                    defmt::warn!("BT tried to set pin with invalid char");
                     return;
                 };
 

@@ -58,15 +58,18 @@ macro_rules! saved_item {
                 }
 
                 fn update_stored(val: Self) {
+                    let now = Instant::now();
+                    let t = now.saturating_add(Duration::from_secs($timeout));
                     unsafe {
                         $name.lock_mut(|s| {
-                            if let Some((prev, prev_changed, _)) = s.as_mut() {
+                            if let Some((prev, prev_changed, prev_t)) = s.as_mut() {
                                 if &val != prev {
                                     *prev_changed = true;
                                     *prev = val;
+                                    *prev_t = if *prev_t < now { t } else { *prev_t };
                                 }
                             } else {
-                                *s = Some((val, true, Instant::now().saturating_add(Duration::from_secs($timeout))));
+                                *s = Some((val, true, t));
                             }
                         })
                     }
@@ -193,7 +196,7 @@ saved_item!(4, UNLOCK_CODE, UnlockCode, 10);
     defmt::Format, PartialEq, Eq, Copy, Clone, Default, serde::Serialize, serde::Deserialize,
 )]
 pub struct Odometer {
-    /// Total travelled distance, in hundreds of meters
+    /// Total travelled distance, in meters
     pub total_distance: u32,
 }
 

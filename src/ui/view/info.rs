@@ -4,6 +4,7 @@ use buoyant::{
     view::{View, prelude::*, scroll_view::ScrollBarVisibility},
 };
 use strum::{EnumCount as _, VariantArray};
+use ufmt::uWrite as _;
 
 use crate::{
     system_state,
@@ -35,7 +36,7 @@ pub fn view(_state: &state::State) -> impl View<ColorFormat, state::State> + use
 
 #[derive(PartialEq, Eq, Clone, Copy, defmt::Format, strum::EnumCount, strum::VariantArray)]
 pub enum Info {
-    SystemVoltageController = 0,
+    SystemVoltageController,
     SystemVoltageBattery,
     BatteryCurrent,
     BatteryCommand,
@@ -49,6 +50,9 @@ pub enum Info {
     BatteryCharging,
     BatteryCharged,
     BatteryTemperature,
+    AmbientLight,
+    GitCommit,
+    Dummy,
 }
 
 impl Info {
@@ -68,33 +72,65 @@ impl Info {
             Info::BatteryCharging => "Charging",
             Info::BatteryCharged => "Charged",
             Info::BatteryTemperature => "Bat temp",
+            Info::AmbientLight => "Ambient",
+            Info::GitCommit => "Git commit",
+            Info::Dummy => "",
         }
     }
 
     fn val(self) -> heapless::String<8, u8> {
         let mut s = heapless::String::new();
 
-        let _ = system_state::read_state(|st| match self {
+        system_state::read_state(|st| match self {
             Info::SystemVoltageController => {
-                ufmt::uwrite!(&mut s, "{}", st.system_voltage.from_controller)
+                let _ = ufmt::uwrite!(&mut s, "{}", st.system_voltage.from_controller);
             }
             Info::SystemVoltageBattery => {
-                ufmt::uwrite!(&mut s, "{}", st.system_voltage.from_battery)
+                let _ = ufmt::uwrite!(&mut s, "{}", st.system_voltage.from_battery);
             }
-            Info::BatteryCurrent => ufmt::uwrite!(&mut s, "{}", st.battery_current),
-            Info::BatteryCommand => ufmt::uwrite!(&mut s, "{}", st.battery_debug.command),
-            Info::BatteryState => ufmt::uwrite!(&mut s, "{}", st.battery_debug.state),
-            Info::BatteryRange => ufmt::uwrite!(&mut s, "{}", st.battery_debug.estimated_range),
-            Info::BatteryRelSOC => ufmt::uwrite!(&mut s, "{}", st.battery_info.relative_soc),
-            Info::BatteryAbsSOC => ufmt::uwrite!(&mut s, "{}", st.battery_info.absolute_soc),
-            Info::BatteryRelSOH => ufmt::uwrite!(&mut s, "{}", st.battery_info.relative_soh),
-            Info::BatteryAbsSOH => ufmt::uwrite!(&mut s, "{}", st.battery_info.absolute_soh),
-            Info::BatteryCapacity => ufmt::uwrite!(&mut s, "{}", st.battery_info.capacity),
-            Info::BatteryCharging => ufmt::uwrite!(&mut s, "{}", st.battery_info.charging),
-            Info::BatteryCharged => ufmt::uwrite!(&mut s, "{}", st.battery_info.charged),
+            Info::BatteryCurrent => {
+                let _ = ufmt::uwrite!(&mut s, "{}", st.battery_current);
+            }
+            Info::BatteryCommand => {
+                let _ = ufmt::uwrite!(&mut s, "{}", st.battery_debug.command);
+            }
+            Info::BatteryState => {
+                let _ = ufmt::uwrite!(&mut s, "{}", st.battery_debug.state);
+            }
+            Info::BatteryRange => {
+                let _ = ufmt::uwrite!(&mut s, "{}", st.battery_debug.estimated_range);
+            }
+            Info::BatteryRelSOC => {
+                let _ = ufmt::uwrite!(&mut s, "{}", st.battery_info.relative_soc);
+            }
+            Info::BatteryAbsSOC => {
+                let _ = ufmt::uwrite!(&mut s, "{}", st.battery_info.absolute_soc);
+            }
+            Info::BatteryRelSOH => {
+                let _ = ufmt::uwrite!(&mut s, "{}", st.battery_info.relative_soh);
+            }
+            Info::BatteryAbsSOH => {
+                let _ = ufmt::uwrite!(&mut s, "{}", st.battery_info.absolute_soh);
+            }
+            Info::BatteryCapacity => {
+                let _ = ufmt::uwrite!(&mut s, "{}", st.battery_info.capacity);
+            }
+            Info::BatteryCharging => {
+                let _ = ufmt::uwrite!(&mut s, "{}", st.battery_info.charging);
+            }
+            Info::BatteryCharged => {
+                let _ = ufmt::uwrite!(&mut s, "{}", st.battery_info.charged);
+            }
             Info::BatteryTemperature => {
-                ufmt::uwrite!(&mut s, "{}", st.battery_info.temperature)
+                let _ = ufmt::uwrite!(&mut s, "{}", st.battery_info.temperature);
             }
+            Info::AmbientLight => {
+                let _ = ufmt::uwrite!(&mut s, "{}", st.ambient_light.mapped);
+            }
+            Info::GitCommit => {
+                let _ = s.write_str(crate::GIT_HASH);
+            }
+            Info::Dummy => {}
         });
 
         s
