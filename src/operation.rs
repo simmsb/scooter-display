@@ -131,7 +131,11 @@ pub struct ActiveState {
 
 impl ActiveState {
     pub fn headlight_on(&self) -> bool {
-        self.headlight_mode == HeadlightMode::On || self.headlight_config.auto_on
+        match self.headlight_mode {
+            HeadlightMode::Auto => self.headlight_config.auto_on,
+            HeadlightMode::On => true,
+            HeadlightMode::Off => false,
+        }
     }
 }
 
