@@ -15,7 +15,12 @@ use scooter_display::{
     operation::OperationCommand,
     pin_digit::PinDigit,
     sim::{self, SimState},
-    ui::{self, colour, engine::UiEngine, keys, state::{Page, State}},
+    ui::{
+        self, colour,
+        engine::UiEngine,
+        keys,
+        state::{Page, State},
+    },
 };
 
 const DISPLAY_W: u32 = 320;
@@ -50,10 +55,8 @@ fn main() -> eframe::Result {
     let emulator = EmulatorApp::new(app, display);
 
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_inner_size([
-            DISPLAY_W as f32 * SCALE + 320.0,
-            DISPLAY_H as f32 * SCALE,
-        ]),
+        viewport: egui::ViewportBuilder::default()
+            .with_inner_size([DISPLAY_W as f32 * SCALE + 320.0, DISPLAY_H as f32 * SCALE]),
         ..Default::default()
     };
 
@@ -206,9 +209,7 @@ where
     }
 
     fn update_texture(&mut self, ctx: &egui::Context) {
-        let output = self
-            .display
-            .to_rgb_output_image(&OutputSettings::default());
+        let output = self.display.to_rgb_output_image(&OutputSettings::default());
         let image = egui::ColorImage::from_rgb(
             [DISPLAY_W as usize, DISPLAY_H as usize],
             output.as_image_buffer().as_raw(),
@@ -217,11 +218,8 @@ where
         match &mut self.texture {
             Some(texture) => texture.set(image, egui::TextureOptions::NEAREST),
             None => {
-                self.texture = Some(ctx.load_texture(
-                    "display",
-                    image,
-                    egui::TextureOptions::NEAREST,
-                ));
+                self.texture =
+                    Some(ctx.load_texture("display", image, egui::TextureOptions::NEAREST));
             }
         }
     }
@@ -245,12 +243,9 @@ where
         let events = std::mem::take(&mut self.pending_events);
         let mut target =
             EmbeddedGraphicsRenderTarget::new_hinted(&mut self.display, colour::black());
-        let tick = self.ui_engine.tick(
-            &mut self.app,
-            &mut target,
-            self.app_start.elapsed(),
-            events,
-        );
+        let tick =
+            self.ui_engine
+                .tick(&mut self.app, &mut target, self.app_start.elapsed(), events);
 
         self.sim
             .apply_operation_commands(tick.operation_commands.into_iter());
@@ -403,9 +398,10 @@ where
                         }
                     });
                     if unlocked && self.speed_mode_idx != previous_speed_mode_idx {
-                        self.sim.apply_operation_commands([OperationCommand::SetSpeedMode(
-                            SPEED_MODES[self.speed_mode_idx],
-                        )]);
+                        self.sim
+                            .apply_operation_commands([OperationCommand::SetSpeedMode(
+                                SPEED_MODES[self.speed_mode_idx],
+                            )]);
                     }
                     let previous_speed_limit = self.speed_limit;
                     ui.add_enabled_ui(unlocked, |ui| {
@@ -416,9 +412,10 @@ where
                         );
                     });
                     if unlocked && self.speed_limit != previous_speed_limit {
-                        self.sim.apply_operation_commands([OperationCommand::SetSpeedLimit(
-                            self.speed_limit,
-                        )]);
+                        self.sim
+                            .apply_operation_commands([OperationCommand::SetSpeedLimit(
+                                self.speed_limit,
+                            )]);
                     }
                     let speed_limit_unlocked = self
                         .sim
@@ -433,7 +430,8 @@ where
                         )
                         .clicked()
                     {
-                        self.sim.apply_operation_commands([OperationCommand::UnlockSpeedLimit]);
+                        self.sim
+                            .apply_operation_commands([OperationCommand::UnlockSpeedLimit]);
                     }
 
                     ui.separator();

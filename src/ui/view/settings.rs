@@ -41,9 +41,15 @@ pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<
                     |s: &mut state::State| (e.cb)(s),
                     |bs| {
                         let (fg, bg) = if bs.is_focused() {
-                            (colour::on_tertiary_container(), colour::tertiary_container())
+                            (
+                                colour::on_tertiary_container(),
+                                colour::tertiary_container(),
+                            )
                         } else {
-                            (colour::on_secondary_container(), colour::secondary_container())
+                            (
+                                colour::on_secondary_container(),
+                                colour::secondary_container(),
+                            )
                         };
 
                         Text::new(e.name, &font::B612_SMALL)
@@ -61,9 +67,15 @@ pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<
                 },
                 |bs| {
                     let (fg, bg) = if bs.is_focused() {
-                        (colour::on_tertiary_container(), colour::tertiary_container())
+                        (
+                            colour::on_tertiary_container(),
+                            colour::tertiary_container(),
+                        )
                     } else {
-                        (colour::on_secondary_container(), colour::secondary_container())
+                        (
+                            colour::on_secondary_container(),
+                            colour::secondary_container(),
+                        )
                     };
 
                     Text::new("Back", &font::B612_SMALL)

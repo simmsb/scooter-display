@@ -76,7 +76,8 @@ impl UiEngine {
         let minute = now.minute() as u8;
         let second = now.second() as u8;
 
-        if app.state().hour != hour || app.state().minute != minute || app.state().second != second {
+        if app.state().hour != hour || app.state().minute != minute || app.state().second != second
+        {
             let mut state = app.state_mut();
             state.hour = hour;
             state.minute = minute;

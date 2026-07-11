@@ -77,7 +77,7 @@ impl AmbientLight {
 #[cfg(feature = "app")]
 mod hardware {
     use at32f4xx_hal::{
-        adc::{config::SampleTime, Adc},
+        adc::{Adc, config::SampleTime},
         gpio::{Analog, Pin},
         pac::ADC1,
     };

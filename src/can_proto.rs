@@ -516,8 +516,8 @@ pub struct BatteryCapacityTemp {
 
     /// Battery charged flag
     #[deku(pad_bytes_before = "2")]
-    pub battery_charged: bool,
     pub battery_charging: bool,
+    pub battery_charged: bool,
 
     /// Stored as celcius * 10
     #[deku(
@@ -1021,7 +1021,7 @@ mod test {
 
     #[test]
     fn test_battery_capacity_temp() {
-        let msg = serde_roundtrip::<BatteryCapacityTemp, _>(&[0x20, 0x4e, 0, 0, 1, 0, 0xbe, 0x0b]);
+        let msg = serde_roundtrip::<BatteryCapacityTemp, _>(&[0x20, 0x4e, 0, 0, 0, 1, 0xbe, 0x0b]);
         assert_eq!(
             msg,
             BatteryCapacityTemp {

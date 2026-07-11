@@ -324,11 +324,17 @@ async fn operation_task_() {
 #[cfg(feature = "app")]
 fn walk_mode_counter_get() -> u8 {
     let mut r = 0;
-    update_state(|s| s.update_if_active(|a| {
-        let v = a.walk_mode_counter.take().unwrap_or(NonMaxU8::ZERO).wrapping_increment();
-        a.walk_mode_counter = Some(v);
-        r = v.as_inner();
-    }));
+    update_state(|s| {
+        s.update_if_active(|a| {
+            let v = a
+                .walk_mode_counter
+                .take()
+                .unwrap_or(NonMaxU8::ZERO)
+                .wrapping_increment();
+            a.walk_mode_counter = Some(v);
+            r = v.as_inner();
+        })
+    });
     r
 }
 

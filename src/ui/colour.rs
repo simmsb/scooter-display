@@ -17,24 +17,24 @@ pub(crate) const fn rgb(r: u8, g: u8, b: u8) -> ColorFormat {
 macro_rules! colour {
     ($name:ident: $r:expr, $g:expr, $b:expr) => {
         #[doc = concat!(
-            "<div style=\"margin:2px 0\">",
-            "<span style=\"background-color:rgb(",
-            stringify!($r),
-            ",",
-            stringify!($g),
-            ",",
-            stringify!($b),
-            ");padding:0 0.7em;margin-right:0.5em;border:1px solid\">",
-            "</span>",
-            "rgb(",
-            stringify!($r),
-            ",",
-            stringify!($g),
-            ",",
-            stringify!($b),
-            ")",
-            "</div>"
-        )]
+                    "<div style=\"margin:2px 0\">",
+                    "<span style=\"background-color:rgb(",
+                    stringify!($r),
+                    ",",
+                    stringify!($g),
+                    ",",
+                    stringify!($b),
+                    ");padding:0 0.7em;margin-right:0.5em;border:1px solid\">",
+                    "</span>",
+                    "rgb(",
+                    stringify!($r),
+                    ",",
+                    stringify!($g),
+                    ",",
+                    stringify!($b),
+                    ")",
+                    "</div>"
+                )]
         pub const $name: ColorFormat = rgb($r, $g, $b);
     };
 }
@@ -50,6 +50,7 @@ macro_rules! colour_accessors {
     ($($name:ident),* $(,)?) => {
         $(
             #[cfg(not(feature = "sim"))]
+            #[inline(always)]
             pub const fn $name() -> ColorFormat {
                 paste::paste! { [<$name:upper>] }
             }
@@ -115,7 +116,7 @@ colour_accessors! {
 }
 
 #[cfg(feature = "sim")]
-pub use theme::{set_theme_settings, theme_settings, ThemeSettings};
+pub use theme::{ThemeSettings, set_theme_settings, theme_settings};
 
 pub const fn green() -> ColorFormat {
     GREEN

@@ -10,8 +10,7 @@ use super::engine::UiEngine;
 
 use crate::{
     buttons::{BHDuration, BHInstant, BUTTON_EVENTS, Button},
-    operation,
-    system_state,
+    operation, system_state,
 };
 
 #[embassy_executor::task]
@@ -50,8 +49,12 @@ async fn ui_(display: crate::display::Display) {
     let app_start = Instant::now();
 
     let app = static_cell::make_static!(
-        App::new(super::state::State::new(), target.size(), super::view::root_view)
-            .with_roles(Role::Button | Role::Container)
+        App::new(
+            super::state::State::new(),
+            target.size(),
+            super::view::root_view
+        )
+        .with_roles(Role::Button | Role::Container)
     );
 
     app.focus_forward();

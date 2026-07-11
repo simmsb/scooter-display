@@ -115,8 +115,7 @@ mod runtime {
 
     impl Theme {
         pub fn from_settings(settings: ThemeSettings) -> Self {
-            let (red, green, blue) =
-                hsv_to_rgb(settings.hue, settings.saturation, settings.value);
+            let (red, green, blue) = hsv_to_rgb(settings.hue, settings.saturation, settings.value);
             let scheme = material_colors::dynamic_color::DynamicScheme::by_variant(
                 Rgb::new(red, green, blue),
                 &Variant::TonalSpot,
@@ -158,11 +157,7 @@ mod runtime {
             60.0 * (((red - green) / delta) + 4.0)
         };
 
-        let saturation = if max < f32::EPSILON {
-            0.0
-        } else {
-            delta / max
-        };
+        let saturation = if max < f32::EPSILON { 0.0 } else { delta / max };
 
         (hue, saturation, max)
     }

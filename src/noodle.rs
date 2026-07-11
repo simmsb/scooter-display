@@ -2,7 +2,7 @@ use at32f4xx_hal::flash::FlashExt;
 use embassy_time::Timer;
 use embedded_storage_async::nor_flash::{NorFlash, ReadNorFlash};
 use sequential_storage::{
-    cache::{CacheImpl, Cache},
+    cache::{Cache, CacheImpl},
     map::{MapConfig, MapStorage},
 };
 
@@ -36,8 +36,11 @@ pub async fn worker_(flash: at32f4xx_hal::pac::FLASH) {
 
     let mut buffer = [0u8; 32];
 
-    let mut map_storage =
-        MapStorage::<u8, _, _>::new(MyFlash(flash), MapConfig::new(0..8192), Cache::new_uncached());
+    let mut map_storage = MapStorage::<u8, _, _>::new(
+        MyFlash(flash),
+        MapConfig::new(0..8192),
+        Cache::new_uncached(),
+    );
 
     init_stored::<SpeedLimit, _, _>(&mut map_storage, &mut buffer);
     init_stored::<HeadlightMode, _, _>(&mut map_storage, &mut buffer);
