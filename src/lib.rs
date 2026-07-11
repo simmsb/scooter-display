@@ -1,5 +1,6 @@
 #![cfg_attr(not(test), no_std)]
 #![allow(nonstandard_style)]
+#![allow(internal_features)]
 #![allow(incomplete_features)]
 #![feature(adt_const_params, unsized_const_params)]
 #![cfg_attr(not(test), feature(integer_widen_truncate))]
@@ -7,6 +8,12 @@
 #![feature(integer_cast_extras)]
 #![feature(type_alias_impl_trait)]
 #![feature(impl_trait_in_assoc_type)]
+#![feature(rustc_attrs)]
+#![feature(pattern_type_macro)]
+#![feature(pattern_types)]
+#![feature(const_trait_impl)]
+#![feature(pattern_type_range_trait)]
+#![feature(trivial_bounds)]
 
 #[cfg(all(target_arch = "arm", target_os = "none"))]
 pub mod adc;

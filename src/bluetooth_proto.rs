@@ -678,6 +678,7 @@ pub struct SystemStatusResponse {
     pub some_pct_str: BluetoothString<6, u8>,
 
     #[deku(pad_bytes_before = "13")]
+    // this comes from canbus message 1857 form the battery
     pub unknown: u8,
 
     #[deku(endian = "big")]

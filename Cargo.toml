@@ -15,9 +15,9 @@ test = false
 at32f4xx-hal = { git = "https://github.com/simmsb/at32f4xx-hal", features = ["at32f415", "defmt"], optional = true }
 cortex-m-rt = { version = "0.7.5", features = ["set-sp", "set-vtor"], optional = true }
 # defmt-rtt = { version = "1.1.0", features = ["disable-blocking-mode"] }
-defmt-rtt = { version = "1.2.0", features = [] }
+defmt-rtt = { version = "1.3.0", features = [] }
 panic-probe = { version = "1.0.0", features = ["defmt", "print-defmt"], optional = true }
-defmt = "1.1.0"
+defmt = "1.1.1"
 cortex-m = { version = "0.7.7", features = ["inline-asm", "linker-plugin-lto", "critical-section-single-core"], optional = true }
 mipidsi = "0.10.0"
 embedded-graphics = "0.8.2"
@@ -48,9 +48,9 @@ embedded-storage-async = "0.4.1"
 dummy-pin = "1.0.0"
 derive-enum-rotate = { git = "https://github.com/simmsb/derive-enum-rotate", version = "0.1.0" }
 embedded-storage = "0.3.1"
-sequential-storage = { version = "7.2.0", default-features = false, features = ["defmt", "postcard"] }
+sequential-storage = { version = "8.0.0", default-features = false, features = ["defmt", "postcard"] }
 paste = "1.0.15"
-itertools = { version = "0.14.0", default-features = false }
+itertools = { version = "0.15.0", default-features = false }
 postcard = { version = "1.1.3", default-features = false, features = ["defmt", "postcard-derive", "experimental-derive"] }
 serde = { version = "1.0.228", default-features = false, features = ["derive"] }
 ufmt = { version = "0.2.0", default-features = false }

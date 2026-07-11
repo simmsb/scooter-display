@@ -1,5 +1,3 @@
-use core::sync::atomic::AtomicU8;
-
 use embassy_futures::select;
 use embassy_time::{Duration, WithTimeout};
 
@@ -30,19 +28,64 @@ fn update_state<T>(f: impl for<'a> FnOnce(&'a mut OperationState) -> T) -> T {
     unsafe { STATE.lock_mut(f) }
 }
 
+#[derive(Copy, Clone)]
+#[repr(transparent)]
+#[rustc_nonnull_optimization_guaranteed]
+pub struct NonMaxU8(pattern_type!(u8 is 0..16));
+
+impl NonMaxU8 {
+    pub const ZERO: Self = Self(unsafe { core::mem::transmute(0u8) });
+
+    pub const fn new(val: u8) -> Option<Self> {
+        if let 0..16 = val {
+            Some(unsafe { Self(core::mem::transmute(val)) })
+        } else {
+            None
+        }
+    }
+
+    pub const fn as_inner(self) -> u8 {
+        unsafe { core::mem::transmute(self) }
+    }
+
+    pub const fn wrapping_increment(self) -> Self {
+        let v: u8 = unsafe { core::mem::transmute(self) };
+        let v = v.wrapping_add(1) & 0xf;
+        Self(unsafe { core::mem::transmute(v) })
+    }
+}
+
+impl defmt::Format for NonMaxU8 {
+    fn format(&self, fmt: defmt::Formatter) {
+        defmt::Format::format(&self.as_inner(), fmt)
+    }
+}
+
+impl PartialEq for NonMaxU8 {
+    fn eq(&self, other: &Self) -> bool {
+        self.as_inner() == other.as_inner()
+    }
+}
+
+impl Eq for NonMaxU8 {}
+
+impl PartialOrd for NonMaxU8 {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        self.as_inner().partial_cmp(&other.as_inner())
+    }
+}
+
+impl Ord for NonMaxU8 {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        self.as_inner().cmp(&other.as_inner())
+    }
+}
+
 pub static OPERATION_COMMANDS: embassy_sync::channel::Channel<
     embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
     OperationCommand,
     1,
 > = embassy_sync::channel::Channel::new();
-
-static SPEED_MODE_COUNTER: AtomicU8 = AtomicU8::new(0);
-
-fn next_speed_mode_counter() -> u8 {
-    let next = SPEED_MODE_COUNTER.fetch_add(1, core::sync::atomic::Ordering::SeqCst);
-
-    next & 0xf
-}
 
 #[derive(PartialEq, Eq, defmt::Format, Clone, Copy)]
 pub enum OperationCommand {
@@ -124,6 +167,8 @@ pub struct ActiveState {
     pub speed_limit_unlocked: bool,
 
     pub speed_mode: SpeedMode,
+
+    pub walk_mode_counter: Option<NonMaxU8>,
 
     pub headlight_mode: HeadlightMode,
     pub headlight_config: HeadlightConfig,
@@ -217,6 +262,7 @@ async fn operation_task_() {
                                 throttle: Throttle(0),
                                 speed_limit,
                                 speed_limit_unlocked: false,
+                                walk_mode_counter: None,
                                 speed_mode,
                                 headlight_mode,
                                 headlight_config: HeadlightConfig {
@@ -266,59 +312,68 @@ async fn operation_task_() {
     }
 }
 
+fn walk_mode_counter_get() -> u8 {
+    let mut r = 0;
+    update_state(|s| s.update_if_active(|a| {
+        let v = a.walk_mode_counter.take().unwrap_or(NonMaxU8::ZERO).wrapping_increment();
+        a.walk_mode_counter = Some(v);
+        r = v.as_inner();
+    }));
+    r
+}
+
 async fn send_speed_and_throttle_can_messages() {
     let buttons = crate::system_state::read_state(|s| s.buttons);
 
-    if let Some((throttle, speed_limit, speed_limit_unlocked, speed_mode, headlight)) =
-        read_state(|s| {
-            s.read_if_active(|a| {
-                (
-                    a.throttle,
-                    a.speed_limit,
-                    a.speed_limit_unlocked,
-                    a.speed_mode,
-                    a.headlight_on(),
-                )
+    let (speed_mode_msg, throttle_msg) =
+        if let Some((throttle, speed_limit, speed_limit_unlocked, speed_mode, headlight)) =
+            read_state(|s| {
+                s.read_if_active(|a| {
+                    (
+                        a.throttle,
+                        a.speed_limit,
+                        a.speed_limit_unlocked,
+                        a.speed_mode,
+                        a.headlight_on(),
+                    )
+                })
             })
-        })
-    {
-        let mut speed_mode_msg = DisplaySpeedMode::new(speed_mode, headlight);
+        {
+            let mut speed_mode_msg = DisplaySpeedMode::new(speed_mode, headlight);
 
-        if speed_mode == SpeedMode::Walk {
-            speed_mode_msg = speed_mode_msg.with_walk_counter(next_speed_mode_counter());
-        }
-
-        CAN_TX_BUS
-            .send(crate::can_proto::Sent::DisplaySpeedMode(speed_mode_msg))
-            .await;
-
-        let speed_limit = if speed_limit_unlocked {
-            match speed_limit {
-                0..=25 => 0,
-                26..=35 => 1,
-                _ => 2,
+            if speed_mode == SpeedMode::Walk {
+                speed_mode_msg = speed_mode_msg.with_walk_counter(walk_mode_counter_get());
             }
+
+            let speed_limit = if speed_limit_unlocked {
+                match speed_limit {
+                    0..=25 => 0,
+                    26..=35 => 1,
+                    _ => 2,
+                }
+            } else {
+                0
+            };
+
+            let throttle_msg = DisplayThrottle::new(
+                throttle.0,
+                buttons.contains(Buttons::L_BLINK),
+                buttons.contains(Buttons::R_BLINK),
+                speed_limit,
+            );
+
+            (speed_mode_msg, throttle_msg)
         } else {
-            0
+            let speed_mode_msg = DisplaySpeedMode::immobile(0);
+            let throttle_msg = DisplayThrottle::new(85, false, false, 0);
+
+            (speed_mode_msg, throttle_msg)
         };
 
-        let throttle_msg = DisplayThrottle::new(
-            throttle.0,
-            buttons.contains(Buttons::L_BLINK),
-            buttons.contains(Buttons::R_BLINK),
-            speed_limit,
-        );
-
-        defmt::trace!("Sending thottle: {}", throttle_msg);
-
-        CAN_TX_BUS
-            .send(crate::can_proto::Sent::DisplayThrottle(throttle_msg))
-            .await;
-    } else {
-        CAN_TX_BUS
-            .send(crate::can_proto::Sent::DisplaySpeedMode(
-                DisplaySpeedMode::immobile(next_speed_mode_counter()),
-            ))
-            .await;
-    }
+    CAN_TX_BUS
+        .send(crate::can_proto::Sent::DisplayThrottle(throttle_msg))
+        .await;
+    CAN_TX_BUS
+        .send(crate::can_proto::Sent::DisplaySpeedMode(speed_mode_msg))
+        .await;
 }
