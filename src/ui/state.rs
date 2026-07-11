@@ -1,3 +1,5 @@
+use chrono::Timelike as _;
+
 use crate::{
     operation::{OperationCommand, OperationState},
     system_state::SystemState,
@@ -37,6 +39,10 @@ pub struct State {
     pub home_state: super::view::home::State,
     pub settings_state: super::view::settings::State,
 
+    pub hour: u8,
+    pub minute: u8,
+    pub second: u8,
+
     pub system_state: SystemState,
     pub operation_state: OperationState,
     pub page_action: Option<PageAction>,
@@ -51,12 +57,23 @@ impl Default for State {
 
 impl State {
     pub fn new() -> Self {
+        let now = crate::platform::current_time();
+
         Self {
             page: Default::default(),
             locked_state: Default::default(),
             home_state: Default::default(),
             settings_state: Default::default(),
+            hour: now.hour() as u8,
+            minute: now.minute() as u8,
+            second: now.second() as u8,
+            #[cfg(feature = "sim")]
+            system_state: crate::sim::default_system_state(),
+            #[cfg(not(feature = "sim"))]
             system_state: crate::system_state::read_state(|s| s.clone()),
+            #[cfg(feature = "sim")]
+            operation_state: crate::sim::default_operation_state(),
+            #[cfg(not(feature = "sim"))]
             operation_state: crate::operation::read_state(|s| s.clone()),
             page_action: None,
             next_operation_commands: Default::default(),

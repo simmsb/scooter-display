@@ -2,7 +2,6 @@ use buoyant::{
     event::Event,
     view::{HStack, VStack, View, prelude::*},
 };
-use chrono::{NaiveTime, Timelike};
 use heapless::HistoryBuf;
 use itertools::Itertools;
 use strum::{EnumCount as _, VariantArray};
@@ -117,11 +116,11 @@ impl TimePieceToShow {
         }
     }
 
-    fn get(&self, t: NaiveTime) -> u8 {
+    fn get(&self, hour: u8, minute: u8, second: u8) -> u8 {
         match self {
-            TimePieceToShow::Hour => t.hour() as u8,
-            TimePieceToShow::Minute => t.minute() as u8,
-            TimePieceToShow::Second => t.second() as u8,
+            TimePieceToShow::Hour => hour,
+            TimePieceToShow::Minute => minute,
+            TimePieceToShow::Second => second,
         }
     }
 }
@@ -144,18 +143,20 @@ fn header(state: &state::State) -> impl View<ColorFormat, state::State> + use<> 
         })
         .unwrap_or("☉");
 
-    let time = crate::rtc::get_datetime().time();
-
     let (mode_fg, mode_bg) = if state
         .operation_state
         .as_active()
         .map(|a| a.speed_limit_unlocked)
         .unwrap_or(false)
     {
-        (colour::ON_PRIMARY_CONTAINER, colour::PRIMARY_CONTAINER)
+        (colour::on_primary_container(), colour::primary_container())
     } else {
-        (colour::ON_BACKGROUND, colour::BACKGROUND)
+        (colour::on_background(), colour::background())
     };
+
+    let hour = state.hour;
+    let minute = state.minute;
+    let second = state.second;
 
     HStack::new((
         Text::new(speed_mode, &font::B612_REGULAR)
@@ -163,13 +164,13 @@ fn header(state: &state::State) -> impl View<ColorFormat, state::State> + use<> 
             .padding(Edges::Horizontal, 4)
             .background_color(mode_bg, RoundedRectangle::new(8))
             .flex_infinite_width(HorizontalAlignment::Leading),
-        Text::new(flash_state, &font::ICONS).foreground_color(colour::ON_BACKGROUND),
+        Text::new(flash_state, &font::ICONS).foreground_color(colour::on_background()),
         ForEach::<{ TimePieceToShow::COUNT }>::new_horizontal(
             TimePieceToShow::VARIANTS,
             move |piece| {
                 Text::new(
                     {
-                        let num = piece.get(time);
+                        let num = piece.get(hour, minute, second);
                         crate::ufmt!(
                             3,
                             "{}{}{}",
@@ -180,14 +181,14 @@ fn header(state: &state::State) -> impl View<ColorFormat, state::State> + use<> 
                     },
                     &font::B612_REGULAR,
                 )
-                .foreground_color(colour::ON_BACKGROUND)
+                .foreground_color(colour::on_background())
             },
         )
         .flex_infinite_width(HorizontalAlignment::Trailing),
     ))
     .with_alignment(VerticalAlignment::Top)
     .padding(Edges::All, 10)
-    .background_color(colour::BACKGROUND, Rectangle)
+    .background_color(colour::background(), Rectangle)
 }
 
 fn body(state: &state::State) -> impl View<ColorFormat, ()> + use<> {
@@ -208,7 +209,7 @@ fn body(state: &state::State) -> impl View<ColorFormat, ()> + use<> {
                     "V",
                     left_blinker,
                     if state.system_state.battery_info.charging {
-                        Some((colour::ON_GREEN, colour::GREEN))
+                        Some((colour::on_green(), colour::green()))
                     } else {
                         None
                     },
@@ -265,14 +266,14 @@ fn speedo(state: &state::State) -> impl View<ColorFormat, ()> + use<> {
             &font::B612_REGULAR_VERY_LARGE_NUMBERS,
         )
         .with_font_size(2)
-        .foreground_color(colour::ON_BACKGROUND),
-        Text::new("km/h", &font::B612_REGULAR).foreground_color(colour::ON_BACKGROUND),
+        .foreground_color(colour::on_background()),
+        Text::new("km/h", &font::B612_REGULAR).foreground_color(colour::on_background()),
     ))
     .with_alignment(VerticalAlignment::Bottom)
     // We put a max width here so that a container width rectangle always draws
     // behind the text, preventing whole-screen redraws.
     .flex_infinite_width(HorizontalAlignment::Center)
-    .background_color(colour::BACKGROUND, Rectangle)
+    .background_color(colour::background(), Rectangle)
 }
 
 fn half_infocard(
@@ -283,9 +284,9 @@ fn half_infocard(
 ) -> impl View<ColorFormat, ()> + use<> {
     let (fg_colour, bg_colour) = colour_override.unwrap_or({
         if blinker {
-            (colour::ON_TERTIARY, colour::TERTIARY)
+            (colour::on_tertiary(), colour::tertiary())
         } else {
-            (colour::ON_PRIMARY_CONTAINER, colour::PRIMARY_CONTAINER)
+            (colour::on_primary_container(), colour::primary_container())
         }
     });
 
@@ -302,14 +303,14 @@ fn half_infocard(
 
 fn infocard(value: i16, title: &'static str, blinker: bool) -> impl View<ColorFormat, ()> + use<> {
     let fg_colour = if blinker {
-        colour::ON_TERTIARY
+        colour::on_tertiary()
     } else {
-        colour::ON_PRIMARY_CONTAINER
+        colour::on_primary_container()
     };
     let bg_colour = if blinker {
-        colour::TERTIARY
+        colour::tertiary()
     } else {
-        colour::PRIMARY_CONTAINER
+        colour::primary_container()
     };
 
     VStack::new((

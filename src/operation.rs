@@ -1,12 +1,19 @@
+#[cfg(feature = "app")]
 use embassy_futures::select;
+#[cfg(feature = "app")]
 use embassy_time::{Duration, WithTimeout};
 
 use crate::{
     adc::Throttle,
+    cfg::{HeadlightMode, SpeedLimit, SpeedMode, UnlockCode},
+};
+
+#[cfg(feature = "app")]
+use crate::{
     buttons_proto::Buttons,
     can::CAN_TX_BUS,
     can_proto::{DisplaySpeedMode, DisplayThrottle},
-    cfg::{HeadlightMode, SpeedLimit, SpeedMode, Storable, UnlockCode},
+    cfg::Storable,
 };
 
 pub static STATE_UPDATES: embassy_sync::watch::Watch<
@@ -184,11 +191,13 @@ impl ActiveState {
     }
 }
 
+#[cfg(feature = "app")]
 #[embassy_executor::task]
 pub async fn operation_task() {
     operation_task_().await
 }
 
+#[cfg(feature = "app")]
 async fn operation_task_() {
     defmt::info!("Operation task startup");
 
@@ -312,6 +321,7 @@ async fn operation_task_() {
     }
 }
 
+#[cfg(feature = "app")]
 fn walk_mode_counter_get() -> u8 {
     let mut r = 0;
     update_state(|s| s.update_if_active(|a| {
@@ -322,6 +332,7 @@ fn walk_mode_counter_get() -> u8 {
     r
 }
 
+#[cfg(feature = "app")]
 async fn send_speed_and_throttle_can_messages() {
     let buttons = crate::system_state::read_state(|s| s.buttons);
 

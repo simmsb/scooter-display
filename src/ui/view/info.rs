@@ -142,9 +142,9 @@ fn info_entry(info: Info) -> impl View<ColorFormat, state::State> + use<> {
         move |_s: &mut state::State| {},
         move |bs| {
             let (fg, bg) = if bs.is_focused() {
-                (colour::ON_TERTIARY_CONTAINER, colour::TERTIARY_CONTAINER)
+                (colour::on_tertiary_container(), colour::tertiary_container())
             } else {
-                (colour::ON_SECONDARY_CONTAINER, colour::SECONDARY_CONTAINER)
+                (colour::on_secondary_container(), colour::secondary_container())
             };
 
             HStack::new((

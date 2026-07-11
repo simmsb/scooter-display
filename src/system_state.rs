@@ -1,13 +1,20 @@
+#[cfg(feature = "app")]
 use embassy_futures::select;
+#[cfg(feature = "app")]
 use embassy_time::{Duration, Ticker};
+#[cfg(feature = "app")]
 use no_std_moving_average::MovingAverage;
 
 use crate::{
     adc::{AmbientLight, Throttle},
-    averager::Averager,
-    buttons::BUTTON_STATE_WATCH,
     buttons_proto::Buttons,
     can_proto::*,
+};
+
+#[cfg(feature = "app")]
+use crate::{
+    averager::Averager,
+    buttons::BUTTON_STATE_WATCH,
     cfg::{Odometer, Storable},
 };
 
@@ -157,6 +164,7 @@ impl SystemState {
     }
 }
 
+#[cfg(feature = "app")]
 #[derive(Default)]
 struct PrivateState {
     average_speed: Averager,
@@ -167,11 +175,13 @@ struct PrivateState {
     predicted_range: u16,
 }
 
+#[cfg(feature = "app")]
 #[embassy_executor::task]
 pub async fn system_state_updater() {
     system_state_updater_().await
 }
 
+#[cfg(feature = "app")]
 async fn system_state_updater_() {
     let can_messages = CAN_MESSAGES.receiver();
     let bt_commands = BT_COMMANDS.receiver();
@@ -327,6 +337,7 @@ impl SystemState {
     }
 }
 
+#[cfg(feature = "app")]
 impl PrivateState {
     fn update_from_can_message(&mut self, can_msg: &CanMessage) {
         match can_msg {

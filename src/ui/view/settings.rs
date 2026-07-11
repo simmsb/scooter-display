@@ -34,16 +34,16 @@ pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<
     .popover(open_menu.as_ref(), |setting| {
         VStack::new((
             Text::new(setting.name(), &font::B612_REGULAR)
-                .foreground_color(colour::ON_SECONDARY_CONTAINER),
+                .foreground_color(colour::on_secondary_container()),
             Spacer::default(),
             ForEach::<{ max_entries_of_setting() }>::new_vertical(setting.entries(), |e| {
                 Button::new(
                     |s: &mut state::State| (e.cb)(s),
                     |bs| {
                         let (fg, bg) = if bs.is_focused() {
-                            (colour::ON_TERTIARY_CONTAINER, colour::TERTIARY_CONTAINER)
+                            (colour::on_tertiary_container(), colour::tertiary_container())
                         } else {
-                            (colour::ON_SECONDARY_CONTAINER, colour::SECONDARY_CONTAINER)
+                            (colour::on_secondary_container(), colour::secondary_container())
                         };
 
                         Text::new(e.name, &font::B612_SMALL)
@@ -61,9 +61,9 @@ pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<
                 },
                 |bs| {
                     let (fg, bg) = if bs.is_focused() {
-                        (colour::ON_TERTIARY_CONTAINER, colour::TERTIARY_CONTAINER)
+                        (colour::on_tertiary_container(), colour::tertiary_container())
                     } else {
-                        (colour::ON_SECONDARY_CONTAINER, colour::SECONDARY_CONTAINER)
+                        (colour::on_secondary_container(), colour::secondary_container())
                     };
 
                     Text::new("Back", &font::B612_SMALL)
@@ -78,7 +78,7 @@ pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<
         .with_alignment(Alignment::Center)
         .with_infinite_max_dimensions()
         .padding(Edges::All, 8)
-        .background_color(colour::SECONDARY_CONTAINER, RoundedRectangle::new(8))
+        .background_color(colour::secondary_container(), RoundedRectangle::new(8))
     })
     .padding(Edges::All, 8)
     .captures_event(|e, s: &mut state::State| match e {
@@ -217,9 +217,9 @@ fn setting_entry(
             },
             move |bs| {
                 let (fg, bg) = if bs.is_focused() {
-                    (colour::ON_TERTIARY_CONTAINER, colour::TERTIARY_CONTAINER)
+                    (colour::on_tertiary_container(), colour::tertiary_container())
                 } else {
-                    (colour::ON_SECONDARY_CONTAINER, colour::SECONDARY_CONTAINER)
+                    (colour::on_secondary_container(), colour::secondary_container())
                 };
 
                 VStack::new((

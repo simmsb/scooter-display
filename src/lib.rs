@@ -1,9 +1,10 @@
-#![cfg_attr(not(test), no_std)]
+#![cfg_attr(not(any(test, feature = "sim")), no_std)]
 #![allow(nonstandard_style)]
 #![allow(internal_features)]
 #![allow(incomplete_features)]
 #![feature(adt_const_params, unsized_const_params)]
-#![cfg_attr(not(test), feature(integer_widen_truncate))]
+#![cfg_attr(any(test, feature = "sim"), feature(integer_widen_truncate))]
+#![cfg_attr(not(any(test, feature = "sim")), feature(integer_widen_truncate))]
 #![feature(mem_conjure_zst)]
 #![feature(integer_cast_extras)]
 #![feature(type_alias_impl_trait)]
@@ -15,31 +16,35 @@
 #![feature(pattern_type_range_trait)]
 #![feature(trivial_bounds)]
 
-#[cfg(all(target_arch = "arm", target_os = "none"))]
+#[cfg(any(feature = "app", feature = "sim"))]
 pub mod adc;
-#[cfg(all(target_arch = "arm", target_os = "none"))]
+#[cfg(feature = "app")]
 pub mod bluetooth;
-#[cfg(all(target_arch = "arm", target_os = "none"))]
+#[cfg(feature = "app")]
 pub mod buttons;
-#[cfg(all(target_arch = "arm", target_os = "none"))]
+#[cfg(feature = "app")]
 pub mod can;
-#[cfg(all(target_arch = "arm", target_os = "none"))]
+#[cfg(feature = "app")]
 pub mod display;
-#[cfg(all(target_arch = "arm", target_os = "none"))]
+#[cfg(feature = "app")]
 pub mod no_inline_future;
-#[cfg(all(target_arch = "arm", target_os = "none"))]
+#[cfg(feature = "app")]
 pub mod noodle;
-#[cfg(all(target_arch = "arm", target_os = "none"))]
+#[cfg(any(feature = "app", feature = "sim"))]
 pub mod operation;
-#[cfg(all(target_arch = "arm", target_os = "none"))]
+#[cfg(any(feature = "app", feature = "sim"))]
+pub mod platform;
+#[cfg(feature = "app")]
 pub mod rtc;
-#[cfg(all(target_arch = "arm", target_os = "none"))]
+#[cfg(feature = "app")]
 pub mod scram;
-#[cfg(all(target_arch = "arm", target_os = "none"))]
+#[cfg(feature = "sim")]
+pub mod sim;
+#[cfg(any(feature = "app", feature = "sim"))]
 pub mod system_state;
-#[cfg(all(target_arch = "arm", target_os = "none"))]
+#[cfg(feature = "app")]
 pub mod time_driver;
-#[cfg(all(target_arch = "arm", target_os = "none"))]
+#[cfg(any(feature = "app", feature = "sim"))]
 pub mod ui;
 
 pub const ON_BENCH: bool = cfg_select! {

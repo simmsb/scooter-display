@@ -1,9 +1,8 @@
 use buoyant::{event::Event, match_view, view::prelude::*};
-use embassy_time::Duration;
 
-use crate::{can::LAST_SEEN_CAN_MESSAGE, operation::OperationCommand};
+use crate::{operation::OperationCommand, platform};
 
-use super::{colour, keys};
+use super::{colour, keys, state::State};
 
 pub mod home;
 pub mod info;
@@ -13,7 +12,7 @@ pub mod settings;
 use super::state::Page;
 
 #[must_use]
-pub fn root_view(state: &super::State) -> impl View<colour::ColorFormat, super::State> + use<> {
+pub fn root_view(state: &State) -> impl View<colour::ColorFormat, State> + use<> {
     match_view!((state.operation_state.is_locked(), state.page), {
         (true, _) => locked::view(state),
         (false, Page::Home) => home::view(state),
@@ -21,15 +20,14 @@ pub fn root_view(state: &super::State) -> impl View<colour::ColorFormat, super::
         (false, Page::Info) => info::view(state),
     })
     .padding(Edges::All, 5)
-    .background_color(colour::BACKGROUND, RoundedRectangle::new(8))
-    .captures_event(|e, s: &mut super::State| {
+    .background_color(colour::background(), Rectangle)
+    .captures_event(|e, s: &mut State| {
         if let Event::KeyDown(keys::POWER_HOLD) = e {
-            let last_can_message = LAST_SEEN_CAN_MESSAGE.lock(|c| *c);
-
             // if we've not seen can messages recently, don't shut down from the
-            // button. (So that powering on doesn't trigger a shutdown too)
-            if last_can_message.elapsed() < Duration::from_secs(1) {
-                crate::scram::trigger_controller_shutdown();
+            // button. This prevents shutdown firing when using the power button
+            // to start up.
+            if platform::can_is_alive() {
+                platform::trigger_shutdown();
                 let _ = s.next_operation_commands.push(OperationCommand::Lock);
             }
         }

@@ -1,3 +1,4 @@
 /target
 .devenv
 firmware.bin
+**/*.DS_Store

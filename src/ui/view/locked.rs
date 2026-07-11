@@ -26,7 +26,7 @@ pub struct State {
 #[must_use]
 pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<> {
     VStack::new((
-        Text::new("Enter PIN", &font::B612_REGULAR).foreground_color(colour::ON_BACKGROUND),
+        Text::new("Enter PIN", &font::B612_REGULAR).foreground_color(colour::on_background()),
         Lens::new(pin_entry(&state.locked_state), |s: &mut state::State| {
             &mut s.locked_state
         }),
@@ -48,15 +48,15 @@ pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<
                 Text::new("Confirm", &font::B612_REGULAR)
                     .padding(Edges::All, 4)
                     .foreground_color(if bs.is_focused() {
-                        colour::ON_PRIMARY
+                        colour::on_primary()
                     } else {
-                        colour::ON_PRIMARY_FIXED
+                        colour::on_primary_fixed()
                     })
                     .background_color(
                         if bs.is_focused() {
-                            colour::PRIMARY
+                            colour::primary()
                         } else {
-                            colour::PRIMARY_FIXED
+                            colour::primary_fixed()
                         },
                         RoundedRectangle::new(4),
                     )
@@ -100,16 +100,16 @@ fn pin_piece(pin: pin_digit::PinDigit) -> impl View<ColorFormat, pin_digit::PinD
             .padding(Edges::All, 4)
             .foreground_color(
                 match rotary_state {
-                    RotaryState::UnFocused => colour::ON_BACKGROUND,
-                    RotaryState::Focused => colour::ON_BACKGROUND,
-                    RotaryState::Captive => colour::ON_PRIMARY_FIXED,
+                    RotaryState::UnFocused => colour::on_background(),
+                    RotaryState::Focused => colour::on_background(),
+                    RotaryState::Captive => colour::on_primary_fixed(),
                 }
             )
             .background(Alignment::Center,
                         match_view!(rotary_state, {
                             RotaryState::UnFocused => EmptyView,
-                            RotaryState::Focused => RoundedRectangle::new(4).stroked(2).foreground_color(colour::PRIMARY),
-                            RotaryState::Captive => RoundedRectangle::new(4).stroked(2).foreground_color(colour::PRIMARY_FIXED)
+                            RotaryState::Focused => RoundedRectangle::new(4).stroked(2).foreground_color(colour::primary()),
+                            RotaryState::Captive => RoundedRectangle::new(4).stroked(2).foreground_color(colour::primary_fixed())
                         })
             )
                 .content_shape(Rectangle.corner_radius(4))

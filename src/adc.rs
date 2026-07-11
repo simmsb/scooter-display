@@ -1,31 +1,3 @@
-use at32f4xx_hal::{
-    adc::{Adc, config::SampleTime},
-    gpio::{Analog, Pin},
-    pac::ADC1,
-};
-use embassy_time::Duration;
-use no_std_moving_average::MovingAverage;
-
-pub static ADC_READINGS: embassy_sync::pubsub::PubSubChannel<
-    embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
-    AdcReading,
-    4,
-    4,
-    1,
-> = embassy_sync::pubsub::PubSubChannel::new();
-
-pub static THROTTLE_READINGS: embassy_sync::watch::Watch<
-    embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
-    Throttle,
-    4,
-> = embassy_sync::watch::Watch::new();
-
-pub static AMBIENT_READINGS: embassy_sync::watch::Watch<
-    embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
-    AmbientLight,
-    4,
-> = embassy_sync::watch::Watch::new();
-
 #[derive(Clone, Copy)]
 pub enum AdcReading {
     Throttle(Throttle),
@@ -102,54 +74,90 @@ impl AmbientLight {
     }
 }
 
-async fn adc_task_(
-    mut adc: Adc<ADC1>,
-    // ambient light
-    ch12: Pin<'C', 2, Analog>,
+#[cfg(feature = "app")]
+mod hardware {
+    use at32f4xx_hal::{
+        adc::{config::SampleTime, Adc},
+        gpio::{Analog, Pin},
+        pac::ADC1,
+    };
+    use embassy_time::Duration;
+    use no_std_moving_average::MovingAverage;
 
-    // throttle
-    ch13: Pin<'C', 3, Analog>,
+    use super::{AdcReading, AmbientLight, Throttle};
 
-    // unknown/ battery voltage
-    _ch15: Pin<'C', 5, Analog>,
-) {
-    let mut do_sample_ticker = embassy_time::Ticker::every(Duration::from_millis(100));
-    // let mut sample_ch15_ticker = embassy_time::Ticker::every(Duration::from_secs(1));
+    pub static ADC_READINGS: embassy_sync::pubsub::PubSubChannel<
+        embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
+        AdcReading,
+        4,
+        4,
+        1,
+    > = embassy_sync::pubsub::PubSubChannel::new();
 
-    let state_reading_ch = ADC_READINGS.publisher().unwrap();
-    let throttle_reading_ch = THROTTLE_READINGS.sender();
-    let ambient_reading_ch = AMBIENT_READINGS.sender();
+    pub static THROTTLE_READINGS: embassy_sync::watch::Watch<
+        embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
+        Throttle,
+        4,
+    > = embassy_sync::watch::Watch::new();
 
-    let mut throttle_averager = MovingAverage::<u16, u32, 4>::new();
-    let mut ambient_light_averager = MovingAverage::<u16, u32, 16>::new();
+    pub static AMBIENT_READINGS: embassy_sync::watch::Watch<
+        embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
+        AmbientLight,
+        4,
+    > = embassy_sync::watch::Watch::new();
 
-    loop {
-        do_sample_ticker.next().await;
+    async fn adc_task_(
+        mut adc: Adc<ADC1>,
+        // ambient light
+        ch12: Pin<'C', 2, Analog>,
 
-        defmt::trace!("ADC measuring ambient");
-        let val = adc.convert(&ch12, SampleTime::Cycles_480).await;
-        let avg = ambient_light_averager.average(val);
-        let ambient_light = AmbientLight::from_raw(avg);
-        state_reading_ch
-            .publish(AdcReading::AmbientLight(ambient_light))
-            .await;
-        ambient_reading_ch.send(ambient_light);
+        // throttle
+        ch13: Pin<'C', 3, Analog>,
 
-        defmt::trace!("ADC measuring throttle");
-        let val = adc.convert(&ch13, SampleTime::Cycles_480).await;
-        let avg = throttle_averager.average(val);
-        let thr = Throttle::from_raw(avg);
-        state_reading_ch.publish(AdcReading::Throttle(thr)).await;
-        throttle_reading_ch.send(thr);
+        // unknown/ battery voltage
+        _ch15: Pin<'C', 5, Analog>,
+    ) {
+        let mut do_sample_ticker = embassy_time::Ticker::every(Duration::from_millis(100));
+        // let mut sample_ch15_ticker = embassy_time::Ticker::every(Duration::from_secs(1));
+
+        let state_reading_ch = ADC_READINGS.publisher().unwrap();
+        let throttle_reading_ch = THROTTLE_READINGS.sender();
+        let ambient_reading_ch = AMBIENT_READINGS.sender();
+
+        let mut throttle_averager = MovingAverage::<u16, u32, 4>::new();
+        let mut ambient_light_averager = MovingAverage::<u16, u32, 16>::new();
+
+        loop {
+            do_sample_ticker.next().await;
+
+            defmt::trace!("ADC measuring ambient");
+            let val = adc.convert(&ch12, SampleTime::Cycles_480).await;
+            let avg = ambient_light_averager.average(val);
+            let ambient_light = AmbientLight::from_raw(avg);
+            state_reading_ch
+                .publish(AdcReading::AmbientLight(ambient_light))
+                .await;
+            ambient_reading_ch.send(ambient_light);
+
+            defmt::trace!("ADC measuring throttle");
+            let val = adc.convert(&ch13, SampleTime::Cycles_480).await;
+            let avg = throttle_averager.average(val);
+            let thr = Throttle::from_raw(avg);
+            state_reading_ch.publish(AdcReading::Throttle(thr)).await;
+            throttle_reading_ch.send(thr);
+        }
+    }
+
+    #[embassy_executor::task]
+    pub async fn adc_task(
+        adc: Adc<ADC1>,
+        ch12: Pin<'C', 2, Analog>,
+        ch13: Pin<'C', 3, Analog>,
+        ch15: Pin<'C', 5, Analog>,
+    ) {
+        adc_task_(adc, ch12, ch13, ch15).await;
     }
 }
 
-#[embassy_executor::task]
-pub async fn adc_task(
-    adc: Adc<ADC1>,
-    ch12: Pin<'C', 2, Analog>,
-    ch13: Pin<'C', 3, Analog>,
-    ch15: Pin<'C', 5, Analog>,
-) {
-    adc_task_(adc, ch12, ch13, ch15).await;
-}
+#[cfg(feature = "app")]
+pub use hardware::*;
