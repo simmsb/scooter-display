@@ -6,11 +6,10 @@ Egret GT.
 It's written in Rust and targets the AT32F415 microcontroller in the display unit.
 
 <div style="display: flex; flex-direction: row; gap: 1em">
-    <img src="docs/SCR-20260711-muva.png" width="150" />
     <img src="docs/SCR-20260711-muxd.png" width="150" />
+    <img src="docs/SCR-20260711-muva.png" width="150" />
     <img src="docs/SCR-20260711-muzz.png" width="150" />
     <img src="docs/SCR-20260711-mvdf.png" width="150" />
-    <img src="docs/SCR-20260711-mvqc.png" width="150" />
 </div>
 
 ### Features
