@@ -10,10 +10,7 @@ use crate::{
 
 #[cfg(feature = "app")]
 use crate::{
-    buttons_proto::Buttons,
-    can::CAN_TX_BUS,
-    can_proto::{DisplaySpeedMode, DisplayThrottle},
-    cfg::Storable,
+    buttons_proto::Buttons, can::CAN_TX_BUS, can_proto::{DisplaySpeedMode, DisplayThrottle}, cfg::{DEFAULT_SPEED_LIMIT, Storable},
 };
 
 pub static STATE_UPDATES: embassy_sync::watch::Watch<
@@ -365,14 +362,15 @@ async fn send_speed_and_throttle_can_messages() {
                 speed_mode_msg = speed_mode_msg.with_walk_counter(walk_mode_counter_get());
             }
 
-            let (speed_limit_idx, controller_speed_limit) = if speed_limit_unlocked {
+            // TODO: refactor idx and controller_speed_limit into an enum
+            let (speed_limit_idx, controller_speed_limit, speed_limit) = if speed_limit_unlocked {
                 match speed_limit {
-                    0..=250 => (0, 250),
-                    251..=350 => (1, 350),
-                    251.. => (2, 450),
+                    0..=250 => (0, 250, speed_limit),
+                    251..=350 => (1, 350, speed_limit),
+                    251.. => (2, 450, speed_limit),
                 }
             } else {
-                (0, 250)
+                (0, 250, DEFAULT_SPEED_LIMIT)
             };
 
             let throttle_msg = DisplayThrottle::new(

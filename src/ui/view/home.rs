@@ -257,17 +257,19 @@ fn body(state: &state::State) -> impl View<ColorFormat, ()> + use<> {
 fn speedo(state: &state::State) -> impl View<ColorFormat, ()> + use<> {
     HStack::new((
         Text::new(
-            crate::ufmt!(
-                3,
-                "{}.{}",
-                (state.system_state.motor_speed / 100) as u8,
-                ((state.system_state.motor_speed / 10) % 10) as u8,
-            ),
+            crate::ufmt!(3, "{}", (state.system_state.motor_speed / 100) as u8,),
             &font::B612_REGULAR_VERY_LARGE_NUMBERS,
         )
         .with_font_size(2)
         .foreground_color(colour::on_background()),
-        Text::new("km/h", &font::B612_REGULAR).foreground_color(colour::on_background()),
+        VStack::new((
+            Text::new(
+                crate::ufmt!(2, ".{}", ((state.system_state.motor_speed / 10) % 10) as u8,),
+                &font::B612_REGULAR_VERY_LARGE_NUMBERS,
+            )
+            .foreground_color(colour::on_background()),
+            Text::new("km/h", &font::B612_REGULAR).foreground_color(colour::on_background()),
+        )),
     ))
     .with_alignment(VerticalAlignment::Bottom)
     // We put a max width here so that a container width rectangle always draws

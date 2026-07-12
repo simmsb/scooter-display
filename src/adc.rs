@@ -11,7 +11,7 @@ impl Throttle {
     pub const INITIAL: Self = Self(0);
 
     // value we report to the controller when throttle is fully depressed
-    const OUT_MAX: u32 = 450;
+    const OUT_MAX: u32 = 360;
 
     fn from_raw(raw: u16) -> Self {
         // value the adc reads when throttle is fully depressed
