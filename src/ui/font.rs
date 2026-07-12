@@ -13,7 +13,7 @@ glyphr::generate_font! {
     name: B612_REGULAR,
     path: "assets/B612-Regular.ttf",
     size: 24,
-    characters: "0-9A-Za-z! /:,%",
+    characters: "0-9A-Za-z! /:,%.()",
     format: Bitmap {
         spread: 10.0,
         padding: 0

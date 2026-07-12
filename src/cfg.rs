@@ -100,29 +100,32 @@ macro_rules! saved_item {
     };
 }
 
-pub const DEFAULT_SPEED_LIMIT: u8 = 22;
+pub const DEFAULT_SPEED_LIMIT: u16 = 220;
 
 #[derive(Copy, Clone, PartialEq, defmt::Format, serde::Serialize, serde::Deserialize)]
 pub struct SpeedLimit {
-    limit: u8,
+    /// Speed limit, in km/h * 10 (220 = 22km/h)
+    limit: u16,
 }
 
 impl SpeedLimit {
-    pub fn get_validated(self) -> u8 {
-        if self.limit == 0 {
-            DEFAULT_SPEED_LIMIT
-        } else if self.limit > 45 {
-            DEFAULT_SPEED_LIMIT
+    /// Retrieve value, we can't trust the stored value to not have been
+    /// corrupted, so validate it on load.
+    pub fn get_validated(self) -> u16 {
+        if self.limit < 30 {
+            30
+        } else if self.limit > 450 {
+            450
         } else {
             self.limit
         }
     }
 
-    pub fn new_validated(val: u8) -> Self {
-        let limit = if val == 0 {
-            DEFAULT_SPEED_LIMIT
-        } else if val > 45 {
-            DEFAULT_SPEED_LIMIT
+    pub fn new_validated(val: u16) -> Self {
+        let limit = if val < 30 {
+            30
+        } else if val > 450 {
+            450
         } else {
             val
         };

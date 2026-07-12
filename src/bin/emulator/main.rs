@@ -96,7 +96,7 @@ where
     charging: bool,
     charged: bool,
     speed_mode_idx: usize,
-    speed_limit: u8,
+    speed_limit: u16,
     theme_settings: colour::ThemeSettings,
 }
 
@@ -123,7 +123,7 @@ where
         let brake_light_on = sim.system.brake_light_on;
         let charging = sim.system.battery_info.charging;
         let charged = sim.system.battery_info.charged;
-        let speed_limit = 22;
+        let speed_limit = 220;
 
         Self {
             sim,
@@ -407,7 +407,7 @@ where
                     ui.add_enabled_ui(unlocked, |ui| {
                         ui.add(
                             egui::DragValue::new(&mut self.speed_limit)
-                                .range(0..=45)
+                                .range(30..=450)
                                 .prefix("Speed limit: "),
                         );
                     });

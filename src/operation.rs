@@ -100,7 +100,7 @@ pub enum OperationCommand {
     Lock,
     UnlockSpeedLimit,
     LockSpeedLimit,
-    SetSpeedLimit(u8),
+    SetSpeedLimit(u16),
     SetSpeedMode(SpeedMode),
     SetHeadlightMode(HeadlightMode),
 }
@@ -114,7 +114,7 @@ pub enum OperationState {
 impl OperationState {
     const DEFAULT: Self = Self::Locked(None);
 
-    fn read_if_active<T>(&self, f: impl FnOnce(&ActiveState) -> T) -> Option<T> {
+    pub fn read_if_active<T>(&self, f: impl FnOnce(&ActiveState) -> T) -> Option<T> {
         if let Self::Active(active) = self {
             Some(f(active))
         } else {
@@ -138,7 +138,7 @@ impl OperationState {
         }
     }
 
-    fn update_if_active(&mut self, f: impl FnOnce(&mut ActiveState)) {
+    pub fn update_if_active(&mut self, f: impl FnOnce(&mut ActiveState)) {
         if let Self::Active(active) = self {
             f(active);
         }
@@ -167,9 +167,9 @@ pub struct HeadlightConfig {
 pub struct ActiveState {
     pub throttle: Throttle,
 
-    /// Speed limit in km/h, we'll later use this to select the 25/35/45 limit
+    /// Speed limit in km/h * 10, we'll later use this to select the 25/35/45 limit
     /// sent to the controller
-    pub speed_limit: u8,
+    pub speed_limit: u16,
 
     pub speed_limit_unlocked: bool,
 
@@ -287,8 +287,11 @@ async fn operation_task_() {
                         update_state(|s| *s = OperationState::Locked(Some(unlock_code)))
                     }
                     OperationCommand::SetSpeedLimit(new_limit) => {
-                        SpeedLimit::update_stored(SpeedLimit::new_validated(new_limit));
-                        update_state(|s| s.update_if_active(|a| a.speed_limit = new_limit))
+                        let validated = SpeedLimit::new_validated(new_limit);
+                        SpeedLimit::update_stored(validated);
+                        update_state(|s| {
+                            s.update_if_active(|a| a.speed_limit = validated.get_validated())
+                        })
                     }
                     OperationCommand::SetSpeedMode(speed_mode) => {
                         SpeedMode::update_stored(speed_mode);
@@ -362,21 +365,21 @@ async fn send_speed_and_throttle_can_messages() {
                 speed_mode_msg = speed_mode_msg.with_walk_counter(walk_mode_counter_get());
             }
 
-            let speed_limit = if speed_limit_unlocked {
+            let (speed_limit_idx, controller_speed_limit) = if speed_limit_unlocked {
                 match speed_limit {
-                    0..=25 => 0,
-                    26..=35 => 1,
-                    _ => 2,
+                    0..=250 => (0, 250),
+                    251..=350 => (1, 350),
+                    251.. => (2, 450),
                 }
             } else {
-                0
+                (0, 250)
             };
 
             let throttle_msg = DisplayThrottle::new(
-                throttle.0,
+                throttle.adjust_for_speed_limit(speed_limit, controller_speed_limit),
                 buttons.contains(Buttons::L_BLINK),
                 buttons.contains(Buttons::R_BLINK),
-                speed_limit,
+                speed_limit_idx,
             );
 
             (speed_mode_msg, throttle_msg)

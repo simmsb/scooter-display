@@ -4,7 +4,7 @@ pub enum AdcReading {
     AmbientLight(AmbientLight),
 }
 
-#[derive(Eq, PartialEq, Default, defmt::Format, Clone, Copy)]
+#[derive(Eq, PartialEq, Default, defmt::Format, Clone, Copy, Debug)]
 pub struct Throttle(pub u16);
 
 impl Throttle {
@@ -36,6 +36,23 @@ impl Throttle {
         (self.0 as u32)
             .saturating_mul(MAX_BT)
             .saturating_div(Self::OUT_MAX)
+            .saturating_truncate()
+    }
+
+    pub fn adjust_for_speed_limit(
+        &self,
+        // current speed limit setpoint (e.g. 271)
+        speed_limit: u16,
+        // speed limit set on the controller
+        // (250/350/450). for a speed_limit of 271
+        // this should be 350.
+        controller_speed_limit: u16,
+    ) -> u16 {
+        // This is just a linear scale for now. I need to find how the speed
+        // actually responds over throttle values.
+        (self.0 as u32)
+            .saturating_mul(speed_limit as u32)
+            .saturating_div(controller_speed_limit as u32)
             .saturating_truncate()
     }
 }
@@ -161,3 +178,15 @@ mod hardware {
 
 #[cfg(feature = "app")]
 pub use hardware::*;
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    pub fn check_throttle_curve() {
+        assert_eq!(Throttle(0).adjust_for_speed_limit(270, 350), 0);
+        assert_eq!(Throttle(200).adjust_for_speed_limit(270, 350), 154);
+        assert_eq!(Throttle(450).adjust_for_speed_limit(270, 350), 347);
+    }
+}

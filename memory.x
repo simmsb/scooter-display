@@ -1,10 +1,9 @@
 MEMORY
 {
   /* NOTE K = KiBi = 1024 bytes */
-  FLASH  : ORIGIN = 0x8008000, LENGTH = 208K /* AT32F415RCT6 has 256K, but be conservative */
+  FLASH  : ORIGIN = 0x8008000, LENGTH = 208K
   /* 4k from end of flash */
   CONFIG : ORIGIN = ORIGIN(FLASH) + LENGTH(FLASH), LENGTH = 16k
-  /* FLASH : ORIGIN = 0x8008000, LENGTH = 64K /\* AT32F415RCT6 has 256K, but be conservative *\/ */
   RAM : ORIGIN = 0x20000000, LENGTH = 32K
 }
 

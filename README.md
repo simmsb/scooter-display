@@ -15,13 +15,13 @@ It's written in Rust and targets the AT32F415 microcontroller in the display uni
 
 ### Features
 
-- Nicer looking HUD (imo), primary colour of UI can be adjusted (at compile time).
+- Nicer looking HUD, primary colour of UI can be adjusted (at compile time).
 - Can't skip unlock screen just by holding some buttons when powering on.
 - Better range calculation (eventually)
 - HUD shows battery voltage and current
 - HUD shows current RTC time
 - Speed limit control when using a GTS controller.
-- Arbitrary speed limit (eventually) (done by limiting throttle)
+- Arbitrary speed limit (done by limiting throttle)
 
 ### Flashing
 

@@ -81,7 +81,6 @@ async fn bluetooth_rx_(
         let mut buf = [0; 48];
 
         let buf = match crate::framed_reader::read_framed(&mut rx, 0x55, &mut buf)
-            .no_inline()
             .await
         {
             Ok(buf) => buf,
@@ -117,7 +116,7 @@ async fn bluetooth_rx_(
 
         defmt::info!("Bluetooth RX: {} {}", command, buf);
 
-        let mut slot = cmd_sender.send().no_inline().await;
+        let mut slot = cmd_sender.send().await;
         *slot = command;
         slot.send_done();
 

@@ -2,7 +2,12 @@ use buoyant::{
     event::Event,
     focus::{self, FocusAction},
     if_view,
-    view::{VStack, View, prelude::*, scroll_view::ScrollBarVisibility},
+    view::{
+        VStack, View,
+        prelude::*,
+        rotary::{RotaryEvent, RotaryState},
+        scroll_view::ScrollBarVisibility,
+    },
 };
 use strum::{EnumCount as _, VariantArray};
 
@@ -36,29 +41,9 @@ pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<
             Text::new(setting.name(), &font::B612_REGULAR)
                 .foreground_color(colour::on_secondary_container()),
             Spacer::default(),
-            ForEach::<{ max_entries_of_setting() }>::new_vertical(setting.entries(), |e| {
-                Button::new(
-                    |s: &mut state::State| (e.cb)(s),
-                    |bs| {
-                        let (fg, bg) = if bs.is_focused() {
-                            (
-                                colour::on_tertiary_container(),
-                                colour::tertiary_container(),
-                            )
-                        } else {
-                            (
-                                colour::on_secondary_container(),
-                                colour::secondary_container(),
-                            )
-                        };
-
-                        Text::new(e.name, &font::B612_SMALL)
-                            .foreground_color(fg)
-                            .flex_infinite_width(HorizontalAlignment::Leading)
-                            .padding(Edges::All, 8)
-                            .background_color(bg, RoundedRectangle::new(4))
-                    },
-                )
+            buoyant::match_view!(setting, {
+                Setting::SpeedLimit => speed_limit_menu(state),
+                _ => generic_setting_screen(setting)
             }),
             Spacer::default(),
             Button::new(
@@ -104,6 +89,103 @@ pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<
         }
         _ => Some(e.clone()),
     })
+}
+
+fn generic_setting_screen(setting: &Setting) -> impl View<ColorFormat, state::State> + use<> {
+    ForEach::<{ max_entries_of_setting() }>::new_vertical(setting.entries(), |e| {
+        Button::new(
+            |s: &mut state::State| (e.cb)(s),
+            |bs| {
+                let (fg, bg) = if bs.is_focused() {
+                    (
+                        colour::on_tertiary_container(),
+                        colour::tertiary_container(),
+                    )
+                } else {
+                    (
+                        colour::on_secondary_container(),
+                        colour::secondary_container(),
+                    )
+                };
+
+                Text::new(e.name, &font::B612_SMALL)
+                    .foreground_color(fg)
+                    .flex_infinite_width(HorizontalAlignment::Leading)
+                    .padding(Edges::All, 8)
+                    .background_color(bg, RoundedRectangle::new(4))
+            },
+        )
+    })
+}
+
+fn speed_limit_menu(state: &state::State) -> impl View<ColorFormat, state::State> + use<> {
+    let speed_limit = state
+        .operation_state
+        .read_if_active(|a| a.speed_limit)
+        .unwrap_or(0);
+
+    VStack::new((
+        Text::new("Speed limit (km/h)", &font::B612_REGULAR),
+        HStack::new((
+            number_rotary(
+                speed_limit.saturating_div(10).saturating_truncate(),
+                speed_limit_rotary_handler(10),
+            ),
+            Text::new(".", &font::B612_REGULAR),
+            number_rotary(
+                (speed_limit % 10).saturating_truncate(),
+                speed_limit_rotary_handler(1),
+            ),
+        )),
+    ))
+}
+
+fn speed_limit_rotary_handler(step: u8) -> impl Fn(&mut state::State, RotaryStepDirection) + use<> {
+    move |state, direction| {
+        let Some(speed_limit) = state.operation_state.read_if_active(|a| a.speed_limit) else {
+            return;
+        };
+        let new_limit = match direction {
+            RotaryStepDirection::Next => speed_limit.saturating_add(step as u16),
+            RotaryStepDirection::Prev => speed_limit.saturating_sub(step as u16),
+        };
+        let _ = state
+            .next_operation_commands
+            .push(OperationCommand::SetSpeedLimit(new_limit));
+    }
+}
+
+enum RotaryStepDirection {
+    Next,
+    Prev,
+}
+
+fn number_rotary(
+    num: u8,
+    update: impl Fn(&mut state::State, RotaryStepDirection),
+) -> impl View<ColorFormat, state::State> {
+    Rotary::new(
+        move |s: &mut state::State, event: RotaryEvent| match event {
+            RotaryEvent::Next => update(s, RotaryStepDirection::Prev),
+            RotaryEvent::Previous => update(s, RotaryStepDirection::Next),
+            RotaryEvent::Select | RotaryEvent::Exit => {}
+        },
+        move |rotary_state| {
+            Text::new(crate::ufmt!(4, "{}", num), &font::B612_REGULAR_LARGE_NUMBERS)
+            .padding(Edges::All, 4)
+            .foreground_color(
+                colour::on_primary_fixed(),
+            )
+            .background(Alignment::Center,
+                        buoyant::match_view!(rotary_state, {
+                            RotaryState::UnFocused => EmptyView,
+                            RotaryState::Focused => RoundedRectangle::new(4).stroked(2).foreground_color(colour::on_primary_fixed()),
+                            RotaryState::Captive => RoundedRectangle::new(4).stroked(2).foreground_color(colour::tertiary_fixed())
+                        })
+            )
+                .content_shape(Rectangle.corner_radius(4))
+        },
+    )
 }
 
 struct SettingEntry {

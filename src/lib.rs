@@ -16,7 +16,6 @@
 #![feature(pattern_type_range_trait)]
 #![feature(trivial_bounds)]
 
-#[cfg(any(feature = "app", feature = "sim"))]
 pub mod adc;
 #[cfg(feature = "app")]
 pub mod bluetooth;
