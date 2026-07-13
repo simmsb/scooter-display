@@ -141,7 +141,6 @@ mod hardware {
         let throttle_reading_ch = THROTTLE_READINGS.sender();
         let ambient_reading_ch = AMBIENT_READINGS.sender();
 
-        let mut throttle_averager = MovingAverage::<u16, u32, 4>::new();
         let mut ambient_light_averager = MovingAverage::<u16, u32, 16>::new();
 
         loop {
@@ -158,8 +157,7 @@ mod hardware {
 
             defmt::trace!("ADC measuring throttle");
             let val = adc.convert(&ch13, SampleTime::Cycles_480).await;
-            let avg = throttle_averager.average(val);
-            let thr = Throttle::from_raw(avg);
+            let thr = Throttle::from_raw(val);
             state_reading_ch.publish(AdcReading::Throttle(thr)).await;
             throttle_reading_ch.send(thr);
         }
