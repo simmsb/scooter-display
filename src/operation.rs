@@ -272,8 +272,8 @@ async fn operation_task_() {
                                 speed_mode,
                                 headlight_mode,
                                 headlight_config: HeadlightConfig {
-                                    low: 10,
-                                    high: 30,
+                                    low: 5,
+                                    high: 13,
                                     auto_on: false,
                                 },
                             })
