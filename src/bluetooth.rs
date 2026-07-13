@@ -80,9 +80,7 @@ async fn bluetooth_rx_(
     loop {
         let mut buf = [0; 48];
 
-        let buf = match crate::framed_reader::read_framed(&mut rx, 0x55, &mut buf)
-            .await
-        {
+        let buf = match crate::framed_reader::read_framed(&mut rx, 0x55, &mut buf).await {
             Ok(buf) => buf,
             Err(e) => {
                 defmt::warn!("Framed read error bt rx: {}", e);

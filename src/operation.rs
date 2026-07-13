@@ -10,7 +10,10 @@ use crate::{
 
 #[cfg(feature = "app")]
 use crate::{
-    buttons_proto::Buttons, can::CAN_TX_BUS, can_proto::{DisplaySpeedMode, DisplayThrottle}, cfg::{DEFAULT_SPEED_LIMIT, Storable},
+    buttons_proto::Buttons,
+    can::CAN_TX_BUS,
+    can_proto::{DisplaySpeedMode, DisplayThrottle},
+    cfg::{DEFAULT_SPEED_LIMIT, Storable},
 };
 
 pub static STATE_UPDATES: embassy_sync::watch::Watch<
