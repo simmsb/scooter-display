@@ -42,13 +42,13 @@ emulator:
     fi
 
 [positional-arguments]
-@bloat *args="":
+@bloat *args:
     cargo bloat --profile release-immediate-abort -Z build-std=core,alloc,panic_abort -Z build-std-features=compiler-builtins-mem,optimize_for_size "$@"
 
 [positional-arguments]
-@asm *args="":
-    cargo asm --rust -Z build-std=core,alloc,panic_abort -Z build-std-features=compiler-builtins-mem,optimize_for_size --bin scooter_display "$@"
+@asm *args:
+    cargo asm --rust --profile release-immediate-abort -Z build-std=core,alloc,panic_abort -Z build-std-features=compiler-builtins-mem,optimize_for_size --include-constants --bin scooter_display "$@"
 
 [positional-arguments]
-@expand *args="":
+@expand *args:
     cargo expand -Z build-std=core,alloc,panic_abort -Z build-std-features=compiler-builtins-mem,optimize_for_size --lib "$@"

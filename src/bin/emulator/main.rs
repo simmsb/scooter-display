@@ -237,7 +237,7 @@ where
     V: View<colour::ColorFormat, State>,
     F: Fn(&State) -> V,
 {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         self.apply_sim_inputs();
 
         let events = std::mem::take(&mut self.pending_events);
@@ -253,12 +253,12 @@ where
         self.locked = self.sim.operation.is_locked();
 
         if tick.rendered {
-            self.update_texture(ctx);
+            self.update_texture(ui.ctx());
         }
 
-        egui::SidePanel::right("controls")
-            .default_width(300.0)
-            .show(ctx, |ui| {
+        egui::Panel::right("controls")
+            .default_size(300.0)
+            .show(ui, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     ui.heading("Theme");
                     let mut hsva = egui::ecolor::Hsva::new(
@@ -445,12 +445,12 @@ where
                         }
                     ));
                     if ui.button("Force redraw").clicked() {
-                        ctx.request_repaint();
+                        ui.request_repaint();
                     }
                 });
             });
 
-        egui::CentralPanel::default().show(ctx, |ui| {
+        egui::CentralPanel::default().show(ui, |ui| {
             if let Some(texture) = &self.texture {
                 ui.add(
                     egui::Image::new((
@@ -468,9 +468,9 @@ where
         });
 
         if tick.rendered {
-            ctx.request_repaint();
+            ui.request_repaint();
         } else {
-            ctx.request_repaint_after(std::time::Duration::from_millis(33));
+            ui.request_repaint_after(std::time::Duration::from_millis(33));
         }
     }
 }
