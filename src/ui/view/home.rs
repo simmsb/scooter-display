@@ -209,7 +209,7 @@ fn body(state: &state::State) -> impl View<ColorFormat, ()> + use<> {
                     "V",
                     left_blinker,
                     if state.system_state.battery_info.charging {
-                        Some((colour::on_green(), colour::green()))
+                        Some((colour::ON_GREEN, colour::GREEN))
                     } else {
                         None
                     },

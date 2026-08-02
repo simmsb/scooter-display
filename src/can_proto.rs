@@ -277,14 +277,14 @@ pub struct DisplaySpeedMode {
 }
 
 impl DisplaySpeedMode {
-    pub const fn immobile(counter: u8) -> Self {
+    pub const fn immobile() -> Self {
         Self {
             mode: 0,
             mode_high: 0x5a,
             headlight: 0,
             magic: DisplaySpeedModeMagic::Normal,
             speed_mode_byte: 0x64,
-            walk_counter: counter,
+            walk_counter: 0,
         }
     }
 
@@ -396,7 +396,7 @@ pub struct DisplayThrottle {
 }
 
 impl DisplayThrottle {
-    pub fn new(throttle: u16, left_blinker: bool, right_blinker: bool, speed_limit: u8) -> Self {
+    pub const fn new(throttle: u16, left_blinker: bool, right_blinker: bool, speed_limit: u8) -> Self {
         DisplayThrottle {
             throttle,
             left_blinker,
@@ -404,6 +404,10 @@ impl DisplayThrottle {
             speed_limit,
             magic: DekuConst,
         }
+    }
+
+    pub const fn locked() -> Self {
+        Self::new(85, false, false, 0)
     }
 }
 

@@ -85,10 +85,10 @@ fn write_stored_if_changed<T: Storable, S: NorFlash, C: CacheImpl<u8>>(
     buf: &mut [u8],
 ) {
     if let Some(v) = T::take_if_changed_and_timedout() {
-        if let Err(_) = embassy_futures::block_on(map_storage.store_item(buf, &T::ID, &v)) {
-            defmt::warn!("Failed to write changed item for id {}", T::ID);
-        } else {
+        if embassy_futures::block_on(map_storage.store_item(buf, &T::ID, &v)).is_ok() {
             defmt::debug!("Updated entry for id {}", T::ID);
+        } else {
+            defmt::warn!("Failed to write changed item for id {}", T::ID);
         }
     }
 }

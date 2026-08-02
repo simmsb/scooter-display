@@ -5,6 +5,7 @@
     flip-link
     cargo-show-asm
     cargo-bloat
+    gcc-arm-embedded
   ];
 
   languages.rust = {

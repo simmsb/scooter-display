@@ -2,7 +2,6 @@ use super::ColorFormat;
 
 pub const DEFAULT_SEED: (u8, u8, u8) = (218, 189, 254);
 
-#[cfg(feature = "sim")]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ThemeSettings {
     pub hue: f32,
@@ -67,7 +66,6 @@ pub struct Theme {
     pub surface_container_highest: ColorFormat,
 }
 
-#[cfg(feature = "sim")]
 mod runtime {
     use std::sync::Mutex;
 
@@ -190,5 +188,4 @@ mod runtime {
     }
 }
 
-#[cfg(feature = "sim")]
 pub use runtime::{set_theme_settings, theme_settings, with_theme};

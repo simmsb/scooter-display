@@ -33,9 +33,7 @@ macro_rules! saved_item {
                     let now = Instant::now();
                     unsafe {
                         $name.lock_mut(|s| {
-                            let Some((x, v, t)) = s.as_mut() else {
-                                return None;
-                            };
+                            let (x, v, t) = s.as_mut()?;
 
                             if *v && (now > *t) {
                                 *v = false;
@@ -109,28 +107,16 @@ pub struct SpeedLimit {
 }
 
 impl SpeedLimit {
-    /// Retrieve value, we can't trust the stored value to not have been
-    /// corrupted, so validate it on load.
+    /// Retrieve value, we apparently can't trust the stored value to not have
+    /// been corrupted, so validate it on load.
     pub fn get_validated(self) -> u16 {
-        if self.limit < 30 {
-            30
-        } else if self.limit > 450 {
-            450
-        } else {
-            self.limit
-        }
+        self.limit.clamp(30, 450)
     }
 
     pub fn new_validated(val: u16) -> Self {
-        let limit = if val < 30 {
-            30
-        } else if val > 450 {
-            450
-        } else {
-            val
-        };
-
-        Self { limit }
+        Self {
+            limit: val.clamp(30, 450),
+        }
     }
 }
 

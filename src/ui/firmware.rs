@@ -11,6 +11,7 @@ use super::engine::UiEngine;
 use crate::{
     buttons::{BHDuration, BHInstant, BUTTON_EVENTS, Button},
     operation, system_state,
+    ui::colour::BLACK,
 };
 
 #[embassy_executor::task]
@@ -44,7 +45,8 @@ fn map_event(
 
 async fn ui_(display: crate::display::Display) {
     let (mut display, mut backlight) = display.split();
-    let mut target = EmbeddedGraphicsRenderTarget::new_hinted(&mut display, super::colour::black());
+    let mut target =
+        EmbeddedGraphicsRenderTarget::new_hinted(&mut display, crate::ui::colour::BLACK);
 
     let app_start = Instant::now();
 
@@ -59,7 +61,7 @@ async fn ui_(display: crate::display::Display) {
 
     app.focus_forward();
 
-    target.clear(super::colour::black());
+    target.clear(BLACK);
 
     let mut ui_engine = UiEngine::new();
 
@@ -142,7 +144,7 @@ async fn ui_(display: crate::display::Display) {
             app,
             &mut target,
             app_start.elapsed().into(),
-            events.into_iter(),
+            events,
         );
 
         for op_command in tick_result.operation_commands {

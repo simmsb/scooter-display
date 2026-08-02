@@ -38,51 +38,56 @@ fn update_state<T>(f: impl for<'a> FnOnce(&'a mut OperationState) -> T) -> T {
 #[derive(Copy, Clone)]
 #[repr(transparent)]
 #[rustc_nonnull_optimization_guaranteed]
-pub struct NonMaxU8(pattern_type!(u8 is 0..16));
+pub struct NibbleCounter(pattern_type!(u8 is 0..16));
 
-impl NonMaxU8 {
-    pub const ZERO: Self = Self(unsafe { core::mem::transmute(0u8) });
+impl NibbleCounter {
+    pub const ZERO: Self = unsafe { Self::from_raw(0) };
 
     pub const fn new(val: u8) -> Option<Self> {
         if let 0..16 = val {
-            Some(unsafe { Self(core::mem::transmute(val)) })
+            Some(unsafe { Self::from_raw(val) })
         } else {
             None
         }
     }
 
+    /// Safety: val must be in range 0..16
+    pub const unsafe fn from_raw(val: u8) -> Self {
+        Self(unsafe { core::mem::transmute::<u8, pattern_type!(u8 is 0..16)>(val) })
+    }
+
     pub const fn as_inner(self) -> u8 {
-        unsafe { core::mem::transmute(self) }
+        unsafe { core::mem::transmute::<pattern_type!(u8 is 0..16), u8>(self.0) }
     }
 
     pub const fn wrapping_increment(self) -> Self {
-        let v: u8 = unsafe { core::mem::transmute(self) };
+        let v: u8 = self.as_inner();
         let v = v.wrapping_add(1) & 0xf;
-        Self(unsafe { core::mem::transmute(v) })
+        unsafe { Self::from_raw(v) }
     }
 }
 
-impl defmt::Format for NonMaxU8 {
+impl defmt::Format for NibbleCounter {
     fn format(&self, fmt: defmt::Formatter) {
         defmt::Format::format(&self.as_inner(), fmt)
     }
 }
 
-impl PartialEq for NonMaxU8 {
+impl PartialEq for NibbleCounter {
     fn eq(&self, other: &Self) -> bool {
         self.as_inner() == other.as_inner()
     }
 }
 
-impl Eq for NonMaxU8 {}
+impl Eq for NibbleCounter {}
 
-impl PartialOrd for NonMaxU8 {
+impl PartialOrd for NibbleCounter {
     fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
-        self.as_inner().partial_cmp(&other.as_inner())
+        Some(self.cmp(other))
     }
 }
 
-impl Ord for NonMaxU8 {
+impl Ord for NibbleCounter {
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
         self.as_inner().cmp(&other.as_inner())
     }
@@ -145,10 +150,7 @@ impl OperationState {
     }
 
     pub fn is_locked(&self) -> bool {
-        match self {
-            Self::Locked(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::Locked(_))
     }
 }
 
@@ -175,7 +177,7 @@ pub struct ActiveState {
 
     pub speed_mode: SpeedMode,
 
-    pub walk_mode_counter: Option<NonMaxU8>,
+    pub walk_mode_counter: Option<NibbleCounter>,
 
     pub headlight_mode: HeadlightMode,
     pub headlight_config: HeadlightConfig,
@@ -332,7 +334,7 @@ fn walk_mode_counter_get() -> u8 {
             let v = a
                 .walk_mode_counter
                 .take()
-                .unwrap_or(NonMaxU8::ZERO)
+                .unwrap_or(NibbleCounter::ZERO)
                 .wrapping_increment();
             a.walk_mode_counter = Some(v);
             r = v.as_inner();
@@ -370,7 +372,7 @@ async fn send_speed_and_throttle_can_messages() {
                 match speed_limit {
                     0..=250 => (0, 250, speed_limit),
                     251..=350 => (1, 350, speed_limit),
-                    251.. => (2, 450, speed_limit),
+                    351.. => (2, 450, speed_limit),
                 }
             } else {
                 (0, 250, DEFAULT_SPEED_LIMIT)
@@ -385,8 +387,8 @@ async fn send_speed_and_throttle_can_messages() {
 
             (speed_mode_msg, throttle_msg)
         } else {
-            let speed_mode_msg = DisplaySpeedMode::immobile(0);
-            let throttle_msg = DisplayThrottle::new(85, false, false, 0);
+            let speed_mode_msg = DisplaySpeedMode::immobile();
+            let throttle_msg = const { DisplayThrottle::new(85, false, false, 0) };
 
             (speed_mode_msg, throttle_msg)
         };

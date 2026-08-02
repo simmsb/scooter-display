@@ -85,7 +85,7 @@ impl UiEngine {
         }
 
         let rendered = if app.should_redraw() {
-            app.render_animated_diffed(target, &colour::black(), &mut self.diffing_mem);
+            app.render_animated_diffed(target, &colour::BLACK, &mut self.diffing_mem);
             true
         } else {
             false
@@ -95,5 +95,11 @@ impl UiEngine {
             rendered,
             operation_commands,
         }
+    }
+}
+
+impl Default for UiEngine {
+    fn default() -> Self {
+        Self::new()
     }
 }

@@ -45,7 +45,7 @@ const SPEED_MODES: [SpeedMode; 4] = [
 
 fn main() -> eframe::Result {
     let mut display = SimulatorDisplay::new(Size::new(DISPLAY_W, DISPLAY_H));
-    let target = EmbeddedGraphicsRenderTarget::new_hinted(&mut display, colour::black());
+    let target = EmbeddedGraphicsRenderTarget::new_hinted(&mut display, colour::BLACK);
     let size = target.size();
 
     let mut app = App::new(ui::state::State::new(), size, ui::view::root_view)
@@ -241,8 +241,7 @@ where
         self.apply_sim_inputs();
 
         let events = std::mem::take(&mut self.pending_events);
-        let mut target =
-            EmbeddedGraphicsRenderTarget::new_hinted(&mut self.display, colour::black());
+        let mut target = EmbeddedGraphicsRenderTarget::new_hinted(&mut self.display, colour::BLACK);
         let tick =
             self.ui_engine
                 .tick(&mut self.app, &mut target, self.app_start.elapsed(), events);
