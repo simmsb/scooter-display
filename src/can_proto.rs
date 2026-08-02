@@ -396,7 +396,12 @@ pub struct DisplayThrottle {
 }
 
 impl DisplayThrottle {
-    pub const fn new(throttle: u16, left_blinker: bool, right_blinker: bool, speed_limit: u8) -> Self {
+    pub const fn new(
+        throttle: u16,
+        left_blinker: bool,
+        right_blinker: bool,
+        speed_limit: u8,
+    ) -> Self {
         DisplayThrottle {
             throttle,
             left_blinker,

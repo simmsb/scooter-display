@@ -140,12 +140,7 @@ async fn ui_(display: crate::display::Display) {
             }
         }
 
-        let tick_result = ui_engine.tick(
-            app,
-            &mut target,
-            app_start.elapsed().into(),
-            events,
-        );
+        let tick_result = ui_engine.tick(app, &mut target, app_start.elapsed().into(), events);
 
         for op_command in tick_result.operation_commands {
             defmt::trace!("op command: {}", op_command);

@@ -62,6 +62,8 @@ ufmt = { version = "0.2.0", default-features = false }
 eframe = { version = "0.35", optional = true }
 embedded-graphics-simulator = { version = "0.8", optional = true, default-features = false }
 material-colors = { git = "https://github.com/Aiving/material-colors", version = "0.5.0", optional = true }
+kfilter = "0.5.1"
+nalgebra = { version = "0.34.0", default-features = false, features = ["libm"] }
 
 [features]
 test = ["deku/descriptive-errors"]
@@ -135,8 +137,6 @@ opt-level = 3
 [build-dependencies]
 build_script_file_gen = "0.6.1"
 material-colors = { git = "https://github.com/Aiving/material-colors", version = "0.5.0" }
-
-[profile.release]
 
 [profile.release-host]
 inherits = "release"
