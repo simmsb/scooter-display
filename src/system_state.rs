@@ -166,13 +166,17 @@ impl SystemState {
 
 #[cfg(feature = "app")]
 mod firmware {
+    use kfilter::{KalmanFilter, KalmanPredict};
 
     use super::*;
 
+    const PRIVATE_STATE_UPDATE_PERIOD_SECS: u64 = 30;
 
     struct PrivateState {
         average_speed: Averager,
         speed_history: MovingAverage<u16, u32, 8>,
+        current_battery_level: u32,
+        battery_level_filter: kfilter::Kalman1MLinearNoInput<f32, 2, 1>,
         moving_average_speed: u16,
         predicted_range: u16,
     }
@@ -182,6 +186,19 @@ mod firmware {
             Self {
                 average_speed: Default::default(),
                 speed_history: Default::default(),
+                current_battery_level: Default::default(),
+                battery_level_filter: kfilter::Kalman1MLinearNoInput::new(
+                    nalgebra::Matrix2::new(
+                        1.0,
+                        const { PRIVATE_STATE_UPDATE_PERIOD_SECS as f32 },
+                        0.0,
+                        1.0,
+                    ),
+                    nalgebra::SMatrix::identity(),
+                    nalgebra::Matrix1x2::new(1.0, 0.0),
+                    nalgebra::SMatrix::identity(),
+                    nalgebra::Vector2::new(20_000.0, 1.0),
+                ),
                 moving_average_speed: Default::default(),
                 predicted_range: Default::default(),
             }
@@ -200,7 +217,8 @@ mod firmware {
         let state_updated = STATE_UPDATES.sender();
         let mut buttons_reader = BUTTON_STATE_WATCH.receiver().unwrap();
 
-        let mut update_private_state_ticker = Ticker::every(Duration::from_secs(30));
+        let mut update_private_state_ticker =
+            Ticker::every(Duration::from_secs(PRIVATE_STATE_UPDATE_PERIOD_SECS));
 
         let mut private_state = PrivateState::default();
 
@@ -357,19 +375,48 @@ mod firmware {
                     let current_speed = controller_speed.motor_speed;
                     self.average_speed.feed(current_speed as u64);
                 }
+                CanMessage::BatteryChargeLevel(BatteryChargeLevel {
+                    absolute_soc_mah, ..
+                }) => {
+                    self.current_battery_level = *absolute_soc_mah;
+                }
                 _ => {}
             }
         }
 
         fn periodic_update(&mut self) {
             self.periodic_update_speed();
+            self.periodic_update_range();
         }
 
+        fn periodic_update_range(&mut self) {
+            let _ = self.battery_level_filter.predict();
+            let _ = self
+                .battery_level_filter
+                .update(nalgebra::Matrix1::new(self.current_battery_level as f32));
+            let battery_filter_state = self.battery_level_filter.state();
 
+            // filter state stores rate of change per second, flip the sign get drain rate
+            let battery_rate_mah_per_sec = -battery_filter_state.y;
 
+            if !battery_rate_mah_per_sec.is_finite() || battery_rate_mah_per_sec < 0.000001 {
+                return;
+            }
 
+            let current_battery_level_mah = self.current_battery_level as f32;
 
+            let seconds_remaining = (current_battery_level_mah / battery_rate_mah_per_sec) as u32;
 
+            // our average speed is in km/h
+            // seconds_remaining is s
+            //
+            // speed * seconds_remaining / (60 * 60) = km
+
+            self.predicted_range = (self.moving_average_speed as u32)
+                .saturating_mul(seconds_remaining)
+                .saturating_div(60 * 60)
+                .saturating_truncate();
+        }
 
         fn periodic_update_speed(&mut self) {
             // if the odometer is not yet loaded, defer to the next cycle
@@ -415,6 +462,7 @@ mod firmware {
                 s.odometer = current.km() as u16;
             }
 
+            s.predicted_range = self.predicted_range;
         }
     }
 }
