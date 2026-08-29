@@ -63,7 +63,7 @@ eframe = { version = "0.36", optional = true }
 embedded-graphics-simulator = { version = "0.8", optional = true, default-features = false }
 material-colors = { git = "https://github.com/Aiving/material-colors", version = "0.5.0", optional = true }
 kfilter = "0.5.1"
-nalgebra = { version = "0.34.0", default-features = false, features = ["libm"] }
+nalgebra = { version = "=0.34.0", default-features = false, features = ["libm"] }
 
 [features]
 test = ["deku/descriptive-errors"]
