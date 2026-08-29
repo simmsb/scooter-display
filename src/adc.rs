@@ -134,7 +134,7 @@ mod hardware {
         // unknown/ battery voltage
         _ch15: Pin<'C', 5, Analog>,
     ) {
-        let mut do_sample_ticker = embassy_time::Ticker::every(Duration::from_millis(100));
+        let mut do_sample_ticker = embassy_time::Ticker::every(Duration::from_millis(50));
         // let mut sample_ch15_ticker = embassy_time::Ticker::every(Duration::from_secs(1));
 
         let state_reading_ch = ADC_READINGS.publisher().unwrap();

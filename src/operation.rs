@@ -203,7 +203,7 @@ pub async fn operation_task() {
 async fn operation_task_() {
     defmt::info!("Operation task startup");
 
-    let mut send_can_messages_ticker = embassy_time::Ticker::every(Duration::from_millis(100));
+    let mut send_can_messages_ticker = embassy_time::Ticker::every(Duration::from_millis(50));
 
     let mut throttle_readings = crate::adc::THROTTLE_READINGS.receiver().unwrap();
     let mut ambient_readings = crate::adc::AMBIENT_READINGS.receiver().unwrap();
