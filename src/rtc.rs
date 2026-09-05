@@ -21,10 +21,12 @@ pub fn init_rtc(regs: ERTC, crm: &mut CRM, pwr: &mut PWC) {
         .unwrap();
 }
 
+#[inline(never)]
 pub fn get_datetime() -> NaiveDateTime {
     unsafe { RTC.get().unwrap().lock_mut(|rtc| rtc.get_datetime()) }
 }
 
+#[inline(never)]
 pub fn set_datetime(dt: NaiveDateTime) {
     unsafe {
         RTC.get().unwrap().lock_mut(|rtc| _ = rtc.set_datetime(&dt));
