@@ -203,8 +203,6 @@ pub async fn operation_task() {
 async fn operation_task_() {
     defmt::info!("Operation task startup");
 
-    let mut send_can_messages_ticker = embassy_time::Ticker::every(Duration::from_millis(50));
-
     let mut throttle_readings = crate::adc::THROTTLE_READINGS.receiver().unwrap();
     let mut ambient_readings = crate::adc::AMBIENT_READINGS.receiver().unwrap();
 
@@ -224,8 +222,7 @@ async fn operation_task_() {
     state_updates.send(());
 
     loop {
-        match select::select4(
-            send_can_messages_ticker.next(),
+        match select::select3(
             throttle_readings
                 .changed()
                 .with_timeout(Duration::from_secs(1)),
@@ -234,18 +231,18 @@ async fn operation_task_() {
         )
         .await
         {
-            select::Either4::First(_) => {
-                send_speed_and_throttle_can_messages().await;
-            }
-            select::Either4::Second(Ok(throttle)) => {
+            select::Either3::First(Ok(throttle)) => {
                 update_state(|s| s.update_if_active(|a| a.throttle = throttle));
+
+                // Send a CAN update as soon as we get a throttle update
+                send_speed_and_throttle_can_messages().await;
 
                 state_updates.send(());
             }
-            select::Either4::Second(Err(_)) => {
+            select::Either3::First(Err(_)) => {
                 panic!("Operation task did not receive throttle update in time");
             }
-            select::Either4::Third(ambient) => update_state(|s| {
+            select::Either3::Second(ambient) => update_state(|s| {
                 s.update_if_active(|a| {
                     if a.headlight_mode == HeadlightMode::Auto {
                         if !a.headlight_config.auto_on && ambient.mapped < a.headlight_config.low {
@@ -260,7 +257,7 @@ async fn operation_task_() {
                     }
                 })
             }),
-            select::Either4::Fourth(op_cmd) => {
+            select::Either3::Third(op_cmd) => {
                 defmt::info!("Handling op command: {}", op_cmd);
                 match op_cmd {
                     OperationCommand::Unlock => {

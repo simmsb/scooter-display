@@ -12,6 +12,15 @@ It's written in Rust and targets the AT32F415 microcontroller in the display uni
     <img src="docs/SCR-20260711-mvdf.png" width="150" />
 </div>
 
+There's some documentation on the scooter here:
+
+- [Battery overview](./docs/Components/Battery/README.md)
+- [Display unit overview](./docs/Components/Display%20unit/README.md)
+- [Motor controller overview](./docs/Components/Motor%20controller/README.md)
+- [System communication](./docs/System%20Communication/README.md)
+
+I also wrote a blog post on how this was built: https://bensimms.moe/reverse-engineering-scooter
+
 ### Features
 
 - Nicer looking HUD, primary colour of UI can be adjusted (at compile time).
