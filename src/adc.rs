@@ -11,7 +11,9 @@ impl Throttle {
     pub const INITIAL: Self = Self(0);
 
     // value we report to the controller when throttle is fully depressed
-    const OUT_MAX: u32 = 360;
+    pub const OUT_MAX: u32 = 360;
+    // value we report to the controller when throttle is unpressed
+    pub const OUT_MIN: u32 = 85;
 
     fn from_raw(raw: u16) -> Self {
         // value the adc reads when throttle is fully depressed
@@ -24,8 +26,9 @@ impl Throttle {
             (raw as u32)
                 .clamp(MIN_RAW, MAX_RAW)
                 .saturating_sub(MIN_RAW)
-                .saturating_mul(Self::OUT_MAX)
+                .saturating_mul(Self::OUT_MAX - Self::OUT_MIN)
                 .saturating_div(MAX_RAW - MIN_RAW)
+                .saturating_add(Self::OUT_MIN)
                 .saturating_truncate(),
         )
     }

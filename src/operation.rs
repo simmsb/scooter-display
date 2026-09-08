@@ -385,7 +385,7 @@ async fn send_speed_and_throttle_can_messages() {
             (speed_mode_msg, throttle_msg)
         } else {
             let speed_mode_msg = DisplaySpeedMode::immobile();
-            let throttle_msg = const { DisplayThrottle::new(85, false, false, 0) };
+            let throttle_msg = const { DisplayThrottle::new(Throttle::OUT_MIN as u16, false, false, 0) };
 
             (speed_mode_msg, throttle_msg)
         };
