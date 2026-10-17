@@ -22,7 +22,7 @@ glyphr::generate_font! {
 
 glyphr::generate_font! {
     name: ICONS,
-    path: "/System/Library/Fonts/Menlo.ttc",
+    path: "assets/icons.ttf",
     size: 24,
     characters: "☼☉!",
     format: Bitmap {
